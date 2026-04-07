@@ -21,17 +21,13 @@ import type {
   SessionCreateEventData,
   SessionUpdateRequest,
   DatabricksWorkspaceSource,
-  DatabricksAppsOutcome,
 } from '@repo/types';
 import { ClaudeSettings } from '../models/claude-settings.model.js';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
-import { createDbAppsMcpServer } from '../lib/mcp-databricks-apps.js';
 import { insertSessionEventInTx } from '../db/helpers.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
-import { DatabricksAppsClient } from '../lib/databricks-apps-client.js';
-import { getAuthProvider } from '../lib/databricks-auth.js';
 import { wsManager } from './websocket-manager.service.js';
 import { enqueueSessionEvent } from './event-queue.service.js';
 import { SessionId } from '../models/session.model.js';
@@ -251,7 +247,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
 
     const systemPromptConfig = buildSystemPromptConfig(sessionContext.outcomes);
     const abortController = new AbortController();
-    const authProvider = await ctx.getAuthProvider();
+    const authProvider = ctx.getAuthProvider();
 
     // MCP サーバーを構築
     const mcpServers: Record<string, McpServerConfig> = {};
@@ -265,8 +261,6 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         },
       };
     }
-    mcpServers.apps = createDbAppsMcpServer({ authProvider, sessionId });
-
     const workspacePath = sessionContext.sources.find(
       (s): s is DatabricksWorkspaceSource => s.type === 'databricks_workspace'
     )?.path;
@@ -299,18 +293,13 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(workspacePath ? { DATABRICKS_WORKSPACE_PATH: workspacePath } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
-          ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-disable-beta-headers: true',
+          ANTHROPIC_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
           ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
           ANTHROPIC_DEFAULT_SONNET_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
           ANTHROPIC_DEFAULT_HAIKU_MODEL: fastify.config.ANTHROPIC_DEFAULT_HAIKU_MODEL,
+          ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-use-coding-agent-mode: true',
+          CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: '1',
           ...authProvider.getEnvVars(),
-        },
-        sandbox: {
-          enabled: true,
-          autoAllowBashIfSandboxed: true,
-          network: {
-            allowedDomains: ['*'],
-          },
         },
       },
     });
@@ -391,24 +380,13 @@ export async function createSession(
   }
 
   // 5. context オブジェクトの構築
-  // databricks_apps outcome がある場合は app name を計算して設定
-  const outcomes = session_context.outcomes.map(outcome => {
-    if (outcome.type === 'databricks_apps') {
-      return {
-        ...outcome,
-        name: `app-${sessionId.getSuffix()}`,
-      };
-    }
-    return outcome;
-  });
-
   const sessionContext: SessionContextResponse = {
     allowed_tools: session_context.allowed_tools,
     disallowed_tools: session_context.disallowed_tools,
     cwd,
     model: session_context.model,
     sources: session_context.sources,
-    outcomes,
+    outcomes: session_context.outcomes,
   };
 
   // 5. タイムスタンプを設定（レスポンス用）
@@ -705,9 +683,6 @@ export async function archiveSession(
   // user_home を取得（ベースディレクトリとして使用）
   const { userHome } = ctx;
 
-  // AuthProvider をトランザクション外で取得（PAT 優先）
-  const authProvider = await getAuthProvider(fastify, ctx.userId);
-
   return fastify.withUserContext(userId, async tx => {
     // 1. セッション情報を取得（cwd を取得するため）
     const sessionRows = await tx
@@ -738,29 +713,6 @@ export async function archiveSession(
           fastify.log.error(
             { sessionId: sessionId.toString(), cwd, userHome, error },
             'Failed to remove working directory'
-          );
-        });
-    }
-
-    // 4. Databricks App を削除（databricks_apps outcome がある場合、トランザクション外で非同期実行）
-    const appsOutcome = context?.outcomes?.find(
-      (o): o is DatabricksAppsOutcome => o.type === 'databricks_apps' && !!o.name
-    );
-    if (appsOutcome?.name) {
-      const appName = appsOutcome.name;
-      const appsClient = new DatabricksAppsClient(authProvider);
-      appsClient
-        .delete(appName)
-        .then(() => {
-          fastify.log.info(
-            { sessionId: sessionId.toString(), appName },
-            'Databricks App deleted successfully'
-          );
-        })
-        .catch(error => {
-          fastify.log.error(
-            { sessionId: sessionId.toString(), appName, error },
-            'Error deleting Databricks App'
           );
         });
     }

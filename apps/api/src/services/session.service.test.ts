@@ -25,19 +25,10 @@ vi.mock('../utils/directory.js', () => ({
 }));
 
 vi.mock('../lib/databricks-auth.js', () => ({
-  getAuthProvider: vi.fn().mockResolvedValue({
+  getAuthProvider: vi.fn().mockReturnValue({
+    type: 'oauth-m2m',
     getToken: vi.fn().mockResolvedValue('test-token'),
   }),
-}));
-
-vi.mock('../lib/mcp-databricks-apps.js', () => ({
-  createDbAppsMcpServer: vi.fn().mockReturnValue({}),
-}));
-
-vi.mock('../lib/databricks-apps-client.js', () => ({
-  DatabricksAppsClient: vi.fn().mockImplementation(() => ({
-    delete: vi.fn().mockResolvedValue(undefined),
-  })),
 }));
 
 vi.mock('../models/claude-settings.model.js', () => ({

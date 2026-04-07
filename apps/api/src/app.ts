@@ -7,7 +7,6 @@ import requestDecoratorPlugin from './plugins/request-decorator.js';
 import staticPlugin from './plugins/static.js';
 import healthRoute from './routes/health.js';
 import userRoute from './routes/user.js';
-import userTokensRoute from './routes/user-tokens.js';
 import sessionRoute from './routes/session.js';
 import titleRoute from './routes/title.js';
 import workspaceRoute from './routes/workspace.js';
@@ -15,7 +14,6 @@ import reposRoute from './routes/repos.js';
 import jobsRoute from './routes/jobs.js';
 import userSkillsRoute from './routes/user-skills.js';
 import userAgentsRoute from './routes/user-agents.js';
-import sessionAppRoute from './routes/session-app.js';
 import { startEventBatcher } from './services/event-queue.service.js';
 
 export async function build() {
@@ -46,9 +44,7 @@ export async function build() {
   // ルート登録（静的ファイルより先に）
   await app.register(healthRoute, { prefix: '/api' });
   await app.register(userRoute, { prefix: '/api' });
-  await app.register(userTokensRoute, { prefix: '/api' });
   await app.register(sessionRoute, { prefix: '/api' });
-  await app.register(sessionAppRoute, { prefix: '/api' });
   await app.register(titleRoute, { prefix: '/api' });
   await app.register(workspaceRoute, { prefix: '/api/databricks' });
   await app.register(reposRoute, { prefix: '/api/databricks' });

@@ -3,10 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
   getServicePrincipalToken,
-  getUserPAT,
   clearSpTokenCache,
   getAuthProvider,
-  type PatEnvVars,
   type ServicePrincipalEnvVars,
 } from './databricks-auth.js';
 
@@ -217,84 +215,6 @@ describe('databricks-auth', () => {
     });
   });
 
-  describe('getUserPAT', () => {
-    it('should return undefined when userId is empty', async () => {
-      const mockFastify = {} as FastifyInstance;
-
-      const token = await getUserPAT(mockFastify, '');
-
-      expect(token).toBeUndefined();
-    });
-
-    it('should fetch PAT from database', async () => {
-      const mockWithUserContext = vi.fn().mockImplementation(async (_userId, callback) => {
-        return callback({
-          select: () => ({
-            from: () => ({
-              where: () => ({
-                limit: () => [{ accessToken: 'user-pat-token' }],
-              }),
-            }),
-          }),
-        });
-      });
-
-      const mockFastify = {
-        withUserContext: mockWithUserContext,
-        log: {
-          warn: vi.fn(),
-        },
-      } as unknown as FastifyInstance;
-
-      const token = await getUserPAT(mockFastify, 'user@example.com');
-
-      expect(token).toBe('user-pat-token');
-      expect(mockWithUserContext).toHaveBeenCalledWith('user@example.com', expect.any(Function));
-    });
-
-    it('should return undefined when PAT not found', async () => {
-      const mockWithUserContext = vi.fn().mockImplementation(async (_userId, callback) => {
-        return callback({
-          select: () => ({
-            from: () => ({
-              where: () => ({
-                limit: () => [],
-              }),
-            }),
-          }),
-        });
-      });
-
-      const mockFastify = {
-        withUserContext: mockWithUserContext,
-        log: {
-          warn: vi.fn(),
-        },
-      } as unknown as FastifyInstance;
-
-      const token = await getUserPAT(mockFastify, 'user@example.com');
-
-      expect(token).toBeUndefined();
-    });
-
-    it('should return undefined and log warning when database error occurs', async () => {
-      const mockLogWarn = vi.fn();
-      const mockWithUserContext = vi.fn().mockRejectedValue(new Error('DB error'));
-
-      const mockFastify = {
-        withUserContext: mockWithUserContext,
-        log: {
-          warn: mockLogWarn,
-        },
-      } as unknown as FastifyInstance;
-
-      const token = await getUserPAT(mockFastify, 'user@example.com');
-
-      expect(token).toBeUndefined();
-      expect(mockLogWarn).toHaveBeenCalled();
-    });
-  });
-
   describe('getAuthProvider', () => {
     const mockConfig = {
       DATABRICKS_HOST: 'example.databricks.com',
@@ -302,108 +222,44 @@ describe('databricks-auth', () => {
       DATABRICKS_CLIENT_SECRET: 'sp-client-secret',
     };
 
-    // Helper to create mock Fastify with PAT
-    function createMockFastifyWithPAT(patToken: string | undefined) {
-      const mockWithUserContext = vi.fn().mockImplementation(async (_userId, callback) => {
-        return callback({
-          select: () => ({
-            from: () => ({
-              where: () => ({
-                limit: () => (patToken ? [{ accessToken: patToken }] : []),
-              }),
-            }),
-          }),
-        });
-      });
-
+    function createMockFastify() {
       return {
         config: mockConfig,
-        withUserContext: mockWithUserContext,
         log: { warn: vi.fn() },
       } as unknown as FastifyInstance;
     }
 
-    describe('principalType = auto (default)', () => {
-      it('should return PAT provider when PAT is registered', async () => {
-        const mockFastify = createMockFastifyWithPAT('user-pat-token');
+    it('should always return SP provider', () => {
+      const mockFastify = createMockFastify();
 
-        const authProvider = await getAuthProvider(mockFastify, 'user@example.com');
+      const authProvider = getAuthProvider(mockFastify);
 
-        expect(authProvider.type).toBe('pat');
-        const envVars = authProvider.getEnvVars() as PatEnvVars;
-        expect(envVars.DATABRICKS_AUTH_TYPE).toBe('pat');
-        expect(envVars.DATABRICKS_TOKEN).toBe('user-pat-token');
-      });
-
-      it('should return SP provider when PAT is not registered', async () => {
-        const mockFastify = createMockFastifyWithPAT(undefined);
-
-        const authProvider = await getAuthProvider(mockFastify, 'user@example.com');
-
-        expect(authProvider.type).toBe('oauth-m2m');
-        const envVars = authProvider.getEnvVars() as ServicePrincipalEnvVars;
-        expect(envVars.DATABRICKS_AUTH_TYPE).toBe('oauth-m2m');
-        expect(envVars.DATABRICKS_CLIENT_ID).toBe('sp-client-id');
-      });
+      expect(authProvider.type).toBe('oauth-m2m');
+      const envVars = authProvider.getEnvVars() as ServicePrincipalEnvVars;
+      expect(envVars.DATABRICKS_AUTH_TYPE).toBe('oauth-m2m');
+      expect(envVars.DATABRICKS_CLIENT_ID).toBe('sp-client-id');
+      expect(envVars.DATABRICKS_CLIENT_SECRET).toBe('sp-client-secret');
+      expect(envVars.DATABRICKS_HOST).toBe('https://example.databricks.com');
     });
 
-    describe('principalType = pat', () => {
-      it('should return PAT provider when PAT is registered', async () => {
-        const mockFastify = createMockFastifyWithPAT('user-pat-token');
+    it('should return a provider that fetches SP token', async () => {
+      const mockFastify = createMockFastify();
 
-        const authProvider = await getAuthProvider(mockFastify, 'user@example.com', 'pat');
+      const mockResponse = {
+        access_token: 'sp-token',
+        token_type: 'Bearer',
+        expires_in: 3600,
+      };
 
-        expect(authProvider.type).toBe('pat');
-        const envVars = authProvider.getEnvVars() as PatEnvVars;
-        expect(envVars.DATABRICKS_AUTH_TYPE).toBe('pat');
-        expect(envVars.DATABRICKS_TOKEN).toBe('user-pat-token');
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
       });
 
-      it('should throw error when PAT is not registered', async () => {
-        const mockFastify = createMockFastifyWithPAT(undefined);
+      const authProvider = getAuthProvider(mockFastify);
+      const token = await authProvider.getToken();
 
-        await expect(getAuthProvider(mockFastify, 'user@example.com', 'pat')).rejects.toThrow(
-          'PAT is not registered'
-        );
-      });
-    });
-
-    describe('principalType = sp', () => {
-      it('should return SP provider even when PAT is registered', async () => {
-        const mockFastify = createMockFastifyWithPAT('user-pat-token');
-
-        const authProvider = await getAuthProvider(mockFastify, 'user@example.com', 'sp');
-
-        expect(authProvider.type).toBe('oauth-m2m');
-        const envVars = authProvider.getEnvVars() as ServicePrincipalEnvVars;
-        expect(envVars.DATABRICKS_AUTH_TYPE).toBe('oauth-m2m');
-        expect(envVars.DATABRICKS_CLIENT_ID).toBe('sp-client-id');
-      });
-
-      it('should return SP provider when PAT is not registered', async () => {
-        const mockFastify = createMockFastifyWithPAT(undefined);
-
-        const authProvider = await getAuthProvider(mockFastify, 'user@example.com', 'sp');
-
-        expect(authProvider.type).toBe('oauth-m2m');
-        const envVars = authProvider.getEnvVars() as ServicePrincipalEnvVars;
-        expect(envVars.DATABRICKS_AUTH_TYPE).toBe('oauth-m2m');
-        expect(envVars.DATABRICKS_CLIENT_ID).toBe('sp-client-id');
-      });
-
-      it('should not call getUserPAT when principalType is sp', async () => {
-        const mockWithUserContext = vi.fn();
-        const mockFastify = {
-          config: mockConfig,
-          withUserContext: mockWithUserContext,
-          log: { warn: vi.fn() },
-        } as unknown as FastifyInstance;
-
-        await getAuthProvider(mockFastify, 'user@example.com', 'sp');
-
-        // withUserContext should not be called because we skip PAT lookup
-        expect(mockWithUserContext).not.toHaveBeenCalled();
-      });
+      expect(token).toBe('sp-token');
     });
   });
 });

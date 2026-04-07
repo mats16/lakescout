@@ -28,7 +28,6 @@ describe('config plugin', () => {
     it('should load config with all required environment variables', async () => {
       // Set required environment variables
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64); // 64 hex chars for AES-256-GCM
       process.env.DATABRICKS_HOST = 'test.databricks.com';
 
       await app.register(configPlugin);
@@ -36,14 +35,12 @@ describe('config plugin', () => {
       // Verify config is available
       expect(app.config).toBeDefined();
       expect(app.config.DATABASE_URL).toBe('postgresql://localhost:5432/test');
-      expect(app.config.ENCRYPTION_KEY).toBe('a'.repeat(64));
       expect(app.config.DATABRICKS_HOST).toBe('test.databricks.com');
     });
 
     it('should use default values for optional environment variables', async () => {
       // Set only required environment variables
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       // Set NODE_ENV to 'test' to prevent loading .env file
       process.env.NODE_ENV = 'test';
@@ -59,7 +56,6 @@ describe('config plugin', () => {
 
     it('should accept valid NODE_ENV values', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
 
       const envValues: Array<'development' | 'production' | 'test'> = [
@@ -82,7 +78,6 @@ describe('config plugin', () => {
 
     it('should accept custom PORT value', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.PORT = '9000';
 
@@ -93,7 +88,6 @@ describe('config plugin', () => {
 
     it('should construct ANTHROPIC_BASE_URL from DATABRICKS_HOST', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'myworkspace.databricks.com';
       // Note: Default ANTHROPIC_BASE_URL is evaluated at module load time, so we need to set it explicitly
       process.env.ANTHROPIC_BASE_URL =
@@ -108,7 +102,6 @@ describe('config plugin', () => {
 
     it('should use default Anthropic model values', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
 
       await app.register(configPlugin);
@@ -120,31 +113,22 @@ describe('config plugin', () => {
   });
 
   describe('validation errors', () => {
-    it('should fail when DATABASE_URL is missing', async () => {
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
+    it('should use empty string default when DATABASE_URL is missing', async () => {
       process.env.DATABRICKS_HOST = 'test.databricks.com';
 
-      await expect(app.register(configPlugin)).rejects.toThrow();
-    });
+      await app.register(configPlugin);
 
-    it('should fail when ENCRYPTION_KEY is missing', async () => {
-      process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.DATABRICKS_HOST = 'test.databricks.com';
-      delete process.env.ENCRYPTION_KEY;
-
-      await expect(app.register(configPlugin)).rejects.toThrow();
+      expect(app.config.DATABASE_URL).toBe('');
     });
 
     it('should fail when DATABRICKS_HOST is missing', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
 
       await expect(app.register(configPlugin)).rejects.toThrow();
     });
 
     it('should fail when NODE_ENV has invalid value', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.NODE_ENV = 'invalid';
 
@@ -153,7 +137,6 @@ describe('config plugin', () => {
 
     it('should fail when PORT is not an integer', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.PORT = 'not-a-number';
 
@@ -162,25 +145,8 @@ describe('config plugin', () => {
 
     it('should fail when DATABRICKS_APP_PORT is not an integer', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.DATABRICKS_APP_PORT = 'not-a-number';
-
-      await expect(app.register(configPlugin)).rejects.toThrow();
-    });
-
-    it('should fail when ENCRYPTION_KEY is not 64 characters', async () => {
-      process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(32); // Too short
-      process.env.DATABRICKS_HOST = 'test.databricks.com';
-
-      await expect(app.register(configPlugin)).rejects.toThrow();
-    });
-
-    it('should fail when ENCRYPTION_KEY contains non-hex characters', async () => {
-      process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'g'.repeat(64); // 'g' is not a valid hex character
-      process.env.DATABRICKS_HOST = 'test.databricks.com';
 
       await expect(app.register(configPlugin)).rejects.toThrow();
     });
@@ -189,7 +155,6 @@ describe('config plugin', () => {
   describe('directory configuration', () => {
     it('should use default directory paths when HOME is set', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.HOME = '/test/home';
       // Note: Default paths are evaluated at module load time, so we need to set them explicitly
@@ -202,7 +167,6 @@ describe('config plugin', () => {
 
     it('should allow custom USER_BASE_DIR', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.USER_BASE_DIR = '/custom/users';
 
@@ -215,7 +179,6 @@ describe('config plugin', () => {
   describe('Databricks configuration', () => {
     it('should accept optional Databricks environment variables', async () => {
       process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-      process.env.ENCRYPTION_KEY = 'a'.repeat(64);
       process.env.DATABRICKS_HOST = 'test.databricks.com';
       process.env.DATABRICKS_APP_NAME = 'my-app';
       process.env.DATABRICKS_WORKSPACE_ID = 'workspace-123';

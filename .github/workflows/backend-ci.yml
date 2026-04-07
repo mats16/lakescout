@@ -135,7 +135,6 @@ jobs:
         working-directory: apps/api
         env:
           NODE_ENV: test
-          ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
   test-integration:
     name: Integration Tests
@@ -197,7 +196,6 @@ jobs:
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-          ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           DATABRICKS_HOST: test.databricks.com
 
   type-check:

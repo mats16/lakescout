@@ -424,15 +424,6 @@ const userSkillsRoute: FastifyPluginAsync = async fastify => {
     } catch (error) {
       request.log.error(error, 'Failed to backup skills');
 
-      // PAT未登録エラー
-      if ((error as Error).message?.includes('PAT is required')) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'PAT is required for backup operation',
-          statusCode: 401,
-        });
-      }
-
       return reply.status(500).send({
         error: 'InternalServerError',
         message: 'Failed to backup skills to Workspace',
@@ -464,15 +455,6 @@ const userSkillsRoute: FastifyPluginAsync = async fastify => {
       return reply.send(result);
     } catch (error) {
       request.log.error(error, 'Failed to restore skills');
-
-      // PAT未登録エラー
-      if ((error as Error).message?.includes('PAT is required')) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'PAT is required for restore operation',
-          statusCode: 401,
-        });
-      }
 
       return reply.status(500).send({
         error: 'InternalServerError',

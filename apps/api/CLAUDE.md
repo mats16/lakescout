@@ -29,7 +29,6 @@ src/
 │   ├── health.ts      # Health check
 │   ├── session.ts     # Session management
 │   ├── user.ts        # User info
-│   ├── user-tokens.ts # Token management
 │   └── title.ts       # Title generation
 ├── services/          # Business logic
 │   ├── event-queue.service.ts
@@ -39,7 +38,7 @@ src/
 │   └── user.service.ts
 ├── types/             # Type definitions
 │   └── event-queue.types.ts
-├── utils/             # Utilities (encryption)
+├── utils/             # Utilities
 ├── app.ts             # Fastify app setup
 └── server.ts          # Server entry point
 ```
@@ -227,7 +226,6 @@ enqueueSessionEvent(fastify, {
 
 ```bash
 DATABASE_URL=postgresql://localhost:5432/mydb
-ENCRYPTION_KEY=your-64-character-hex-key
 DATABRICKS_HOST=your-workspace.databricks.com
 ```
 

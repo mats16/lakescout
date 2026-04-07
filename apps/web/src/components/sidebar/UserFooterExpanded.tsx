@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Globe, Check, Settings, ExternalLink, Sparkles, Bot } from 'lucide-react';
+import { Globe, Check, ExternalLink, Sparkles, Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -18,14 +18,12 @@ interface UserFooterExpandedProps {
   displayName: string;
   initials: string;
   databricksHost?: string | null;
-  onSettingsOpen: () => void;
 }
 
 export function UserFooterExpanded({
   displayName,
   initials,
   databricksHost,
-  onSettingsOpen,
 }: UserFooterExpandedProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -63,10 +61,6 @@ export function UserFooterExpanded({
             {t('user.agents')}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onSettingsOpen}>
-            <Settings className="h-4 w-4 mr-2" />
-            {t('user.settings')}
-          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Globe className="h-4 w-4 mr-2" />

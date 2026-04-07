@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { UserSettingsModal } from '@/components/settings/UserSettingsModal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSidebar } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -25,7 +23,6 @@ export function UserFooter({
   onRetry,
 }: UserFooterProps) {
   const { t } = useTranslation();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const { state } = useSidebar();
   const isCollapsed = state === 'collapsed';
 
@@ -93,8 +90,6 @@ export function UserFooter({
     );
   }
 
-  const handleSettingsOpen = () => setSettingsOpen(true);
-
   return (
     <>
       {isCollapsed ? (
@@ -102,22 +97,14 @@ export function UserFooter({
           displayName={displayName}
           initials={initials}
           databricksHost={databricksHost}
-          onSettingsOpen={handleSettingsOpen}
         />
       ) : (
         <UserFooterExpanded
           displayName={displayName}
           initials={initials}
           databricksHost={databricksHost}
-          onSettingsOpen={handleSettingsOpen}
         />
       )}
-
-      <UserSettingsModal
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        databricksHost={databricksHost}
-      />
     </>
   );
 }

@@ -29,17 +29,8 @@ const reposRoute: FastifyPluginAsync = async fastify => {
     }
 
     const ctx = createUserContext(fastify, request);
-    const authProvider = await ctx.getAuthProvider();
-
-    if (authProvider.type !== 'pat') {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'PAT is not registered',
-        statusCode: 401,
-      });
-    }
-
-    const pat = await authProvider.getToken();
+    const authProvider = ctx.getAuthProvider();
+    const token = await authProvider.getToken();
 
     const apiUrl = new URL('/api/2.0/repos', `https://${databricksHost}`);
 
@@ -51,7 +42,7 @@ const reposRoute: FastifyPluginAsync = async fastify => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${pat}`,
+        authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(body),
     });

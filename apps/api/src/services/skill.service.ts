@@ -846,10 +846,7 @@ export async function backupSkillsToWorkspace(ctx: UserContext): Promise<SkillBa
   const workspacePath = getWorkspaceSkillsPath(ctx.userName);
 
   // 認証情報を取得
-  const authProvider = await ctx.getAuthProvider();
-  if (authProvider.type !== 'pat') {
-    throw new Error('PAT is required for backup operation');
-  }
+  const authProvider = ctx.getAuthProvider();
 
   // ローカルスキルディレクトリが存在するか確認
   try {
@@ -900,10 +897,7 @@ export async function restoreSkillsFromWorkspace(ctx: UserContext): Promise<Skil
   const workspacePath = getWorkspaceSkillsPath(ctx.userName);
 
   // 認証情報を取得
-  const authProvider = await ctx.getAuthProvider();
-  if (authProvider.type !== 'pat') {
-    throw new Error('PAT is required for restore operation');
-  }
+  const authProvider = ctx.getAuthProvider();
 
   // 1. ローカルの既存ディレクトリを削除
   // セキュリティ: ユーザーホーム配下であることを検証

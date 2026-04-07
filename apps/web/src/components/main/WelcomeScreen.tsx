@@ -8,7 +8,6 @@ import {
   Check,
   Loader2,
   Bug,
-  Rocket,
   Construction,
   DatabaseZap,
 } from 'lucide-react';
@@ -30,7 +29,6 @@ import { WorkspaceSelector } from '@/components/workspace/WorkspaceSelector';
 import { useImageAttachment } from '@/hooks/useImageAttachment';
 import { useDragDrop } from '@/hooks/useDragDrop';
 import { useRecentWorkspaces } from '@/hooks/useRecentWorkspaces';
-import { useUser } from '@/hooks/useUser';
 import { buildMessageContent } from '@/lib/content-builder';
 import { SESSION_MODELS, DEFAULT_SESSION_MODEL, TEXTAREA_MAX_HEIGHT_MAIN } from '@/constants';
 import type { UserMessageContentBlock, WorkspaceSelection } from '@repo/types';
@@ -40,7 +38,6 @@ interface WelcomeScreenProps {
     content: UserMessageContentBlock[],
     modelId: string,
     workspaceSelection: WorkspaceSelection | null,
-    enableDatabricksApps: boolean,
     enableDatabricksSqlWrite: boolean
   ) => Promise<void> | void;
   sessionError?: string | null;
@@ -48,7 +45,6 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps) {
   const { t } = useTranslation();
-  const { hasPat } = useUser();
   const [selectedQuickstart, setSelectedQuickstart] = useState<QuickstartType | null>(null);
   const [content, setContent] = useLocalStorageState('chat-draft-new-session', {
     defaultValue: '',
@@ -58,7 +54,6 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
   });
   const selectedModel = SESSION_MODELS.find(m => m.id === selectedModelId) ?? DEFAULT_SESSION_MODEL;
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceSelection | null>(null);
-  const [enableDatabricksApps, setEnableDatabricksApps] = useState(false);
   const [enableDatabricksSqlWrite, setEnableDatabricksSqlWrite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -107,7 +102,6 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
         messageContent,
         selectedModel.id,
         selectedWorkspace,
-        enableDatabricksApps,
         enableDatabricksSqlWrite
       );
       setContent('');
@@ -150,12 +144,6 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
       description: t('welcome.quickstarts.lakeflow.description'),
     },
     {
-      type: 'databricksApps' as const,
-      icon: Rocket,
-      title: t('welcome.quickstarts.databricksApps.title'),
-      description: t('welcome.quickstarts.databricksApps.description'),
-    },
-    {
       type: 'tbd' as const,
       icon: Construction,
       title: t('welcome.quickstarts.tbd.title'),
@@ -172,24 +160,11 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
 
       {/* Workspace Selector */}
       <div className="w-full max-w-3xl mb-4">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div>
-                <WorkspaceSelector
-                  value={selectedWorkspace}
-                  onChange={setSelectedWorkspace}
-                  disabled={isSubmitting || !hasPat}
-                />
-              </div>
-            </TooltipTrigger>
-            {!hasPat && (
-              <TooltipContent>
-                <p>{t('workspace.patRequired')}</p>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        <WorkspaceSelector
+          value={selectedWorkspace}
+          onChange={setSelectedWorkspace}
+          disabled={isSubmitting}
+        />
       </div>
 
       {/* Chat Input Area */}
@@ -229,32 +204,6 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{t('sidebar.attachImage')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn('h-8 w-8 shrink-0', enableDatabricksApps && 'bg-red-500/10')}
-                      onClick={() => setEnableDatabricksApps(prev => !prev)}
-                      disabled={isSubmitting}
-                    >
-                      <Rocket
-                        className={cn(
-                          'h-4 w-4',
-                          enableDatabricksApps
-                            ? 'text-red-500 stroke-[2.5]'
-                            : 'text-muted-foreground'
-                        )}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('welcome.databricksAppsToggle')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -366,7 +315,7 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
       </div>
 
       {/* Quickstart Cards - Horizontal Layout */}
-      <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-3">
         {quickstarts.map(qs => (
           <QuickstartCard
             key={qs.type}
@@ -383,19 +332,8 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
         open={selectedQuickstart !== null}
         onOpenChange={open => !open && setSelectedQuickstart(null)}
         quickstartType={selectedQuickstart}
-        onFillPrompt={(prompt, workspaceSelection, enableApps) => {
+        onFillPrompt={prompt => {
           setContent(prompt);
-          if (workspaceSelection) {
-            setSelectedWorkspace(workspaceSelection);
-            addRecentWorkspace(
-              workspaceSelection.path,
-              workspaceSelection.object_id,
-              workspaceSelection.object_type
-            );
-          }
-          if (enableApps) {
-            setEnableDatabricksApps(true);
-          }
         }}
       />
     </div>

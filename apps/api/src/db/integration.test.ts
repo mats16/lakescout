@@ -26,7 +26,7 @@ const TEST_USER_2 = 'test-user-2';
 const TEST_SESSION_1 = '11111111-1111-1111-1111-111111111111';
 const TEST_SESSION_2 = '22222222-2222-2222-2222-222222222222';
 
-describe('Database Integration Tests', () => {
+describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
   let client: ReturnType<typeof postgres>;
   let db: PostgresJsDatabase<typeof schema>;
 
@@ -45,10 +45,7 @@ describe('Database Integration Tests', () => {
   }
 
   beforeAll(async () => {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error('DATABASE_URL is not set');
-    }
+    const databaseUrl = process.env.DATABASE_URL!;
 
     client = postgres(databaseUrl, { max: 1 });
     db = drizzle({ client, schema });
@@ -66,7 +63,6 @@ describe('Database Integration Tests', () => {
     // FORCE RLS により、どちらのケースでも RLS が強制される
     await client`ALTER TABLE sessions FORCE ROW LEVEL SECURITY`;
     await client`ALTER TABLE user_settings FORCE ROW LEVEL SECURITY`;
-    await client`ALTER TABLE oauth_tokens FORCE ROW LEVEL SECURITY`;
   });
 
   afterAll(async () => {
@@ -79,7 +75,7 @@ describe('Database Integration Tests', () => {
     // テストデータをクリーンアップ
     // TRUNCATE は RLS をバイパスするため、ユーザーコンテキストなしで実行可能
     // CASCADE で外部キー参照を持つテーブルも一緒にクリア
-    await client`TRUNCATE TABLE session_events, sessions, oauth_tokens, user_settings, users CASCADE`;
+    await client`TRUNCATE TABLE session_events, sessions, user_settings, users CASCADE`;
   });
 
   describe('sessionEvents table', () => {
@@ -325,162 +321,6 @@ describe('Database Integration Tests', () => {
 
         expect(updated.claudeConfigBackup).toBe('disabled');
       });
-    });
-
-    describe('oauth_tokens table', () => {
-      beforeEach(async () => {
-        if (skipRlsTests) return;
-
-        // 暗号化キーが必要
-        if (!process.env.ENCRYPTION_KEY) {
-          process.env.ENCRYPTION_KEY = 'a'.repeat(64);
-        }
-
-        // 各ユーザーのトークンを作成（RLS 保護テーブル）
-        await withTestUserContext(TEST_USER_1, async tx => {
-          await tx.insert(schema.oauthTokens).values({
-            userId: TEST_USER_1,
-            provider: 'github',
-            authType: 'oauth',
-            accessToken: 'token1',
-          });
-        });
-        await withTestUserContext(TEST_USER_2, async tx => {
-          await tx.insert(schema.oauthTokens).values({
-            userId: TEST_USER_2,
-            provider: 'github',
-            authType: 'oauth',
-            accessToken: 'token2',
-          });
-        });
-      });
-
-      it('should only return tokens for the current user', async () => {
-        if (skipRlsTests) return;
-
-        const user1Tokens = await withUserContext(TEST_USER_1, async tx => {
-          return tx.select().from(schema.oauthTokens);
-        });
-
-        expect(user1Tokens).toHaveLength(1);
-        expect(user1Tokens[0].userId).toBe(TEST_USER_1);
-      });
-
-      it('should not allow access to other users tokens', async () => {
-        if (skipRlsTests) return;
-
-        const user1Tokens = await withUserContext(TEST_USER_1, async tx => {
-          return tx
-            .select()
-            .from(schema.oauthTokens)
-            .where(eq(schema.oauthTokens.userId, TEST_USER_2));
-        });
-
-        expect(user1Tokens).toHaveLength(0);
-      });
-    });
-  });
-
-  describe('Encryption in database', () => {
-    /**
-     * RLSコンテキスト付きでクエリを実行するヘルパー
-     */
-    async function withUserContext<T>(
-      userId: string,
-      callback: (tx: typeof db) => Promise<T>
-    ): Promise<T> {
-      return db.transaction(async tx => {
-        await tx.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-        return callback(tx as unknown as typeof db);
-      });
-    }
-
-    beforeEach(async () => {
-      if (!process.env.ENCRYPTION_KEY) {
-        process.env.ENCRYPTION_KEY = 'a'.repeat(64);
-      }
-
-      await db.insert(schema.users).values({ id: TEST_USER_1 });
-    });
-
-    it('should encrypt access_token when stored and decrypt when retrieved', async () => {
-      const originalToken = 'my-secret-access-token';
-
-      // RLSコンテキスト付きでINSERT
-      await withUserContext(TEST_USER_1, async tx => {
-        await tx.insert(schema.oauthTokens).values({
-          userId: TEST_USER_1,
-          provider: 'github',
-          authType: 'oauth',
-          accessToken: originalToken,
-        });
-      });
-
-      // Drizzle経由で取得（復号化される）
-      const [retrieved] = await withUserContext(TEST_USER_1, async tx => {
-        return tx
-          .select()
-          .from(schema.oauthTokens)
-          .where(eq(schema.oauthTokens.userId, TEST_USER_1));
-      });
-
-      expect(retrieved.accessToken).toBe(originalToken);
-
-      // 生SQLで取得（暗号化されたまま）
-      // RLS が有効なため、トランザクション内で app.user_id を設定
-      const rawResult = await db.transaction(async tx => {
-        await tx.execute(sql`SELECT set_config('app.user_id', ${TEST_USER_1}, true)`);
-        return tx.execute(
-          sql`SELECT access_token FROM oauth_tokens WHERE user_id = ${TEST_USER_1}`
-        );
-      });
-
-      const encryptedToken = (rawResult[0] as { access_token: string }).access_token;
-      expect(encryptedToken).not.toBe(originalToken);
-      // Base64形式であることを確認
-      expect(() => Buffer.from(encryptedToken, 'base64')).not.toThrow();
-    });
-
-    it('should handle nullable refresh_token correctly', async () => {
-      // refresh_token なし
-      await withUserContext(TEST_USER_1, async tx => {
-        await tx.insert(schema.oauthTokens).values({
-          userId: TEST_USER_1,
-          provider: 'provider1',
-          authType: 'type1',
-          accessToken: 'token1',
-          refreshToken: null,
-        });
-      });
-
-      const [withoutRefresh] = await withUserContext(TEST_USER_1, async tx => {
-        return tx
-          .select()
-          .from(schema.oauthTokens)
-          .where(eq(schema.oauthTokens.provider, 'provider1'));
-      });
-
-      expect(withoutRefresh.refreshToken).toBeNull();
-
-      // refresh_token あり
-      await withUserContext(TEST_USER_1, async tx => {
-        await tx.insert(schema.oauthTokens).values({
-          userId: TEST_USER_1,
-          provider: 'provider2',
-          authType: 'type2',
-          accessToken: 'token2',
-          refreshToken: 'my-refresh-token',
-        });
-      });
-
-      const [withRefresh] = await withUserContext(TEST_USER_1, async tx => {
-        return tx
-          .select()
-          .from(schema.oauthTokens)
-          .where(eq(schema.oauthTokens.provider, 'provider2'));
-      });
-
-      expect(withRefresh.refreshToken).toBe('my-refresh-token');
     });
   });
 });

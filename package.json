@@ -27,5 +27,8 @@
     "node": ">=22.16",
     "npm": ">=10.0.0"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.60.0"
+  },
   "packageManager": "npm@10.9.2"
 }

@@ -2,12 +2,9 @@
  * Databricks 認証ユーティリティ
  *
  * Service Principal (SP) を使用した OAuth Client Credentials フローでトークンを取得します。
- * また、ユーザーの Personal Access Token (PAT) を DB から取得する機能も提供します。
  */
 
 import type { FastifyInstance } from 'fastify';
-import { eq, and } from 'drizzle-orm';
-import { oauthTokens } from '../db/schema.js';
 import { normalizeHost } from '../utils/normalize-host.js';
 
 interface CachedToken {
@@ -90,94 +87,21 @@ export function clearSpTokenCache(): void {
   spTokenCache = null;
 }
 
-/**
- * DB からユーザーの Personal Access Token (PAT) を取得
- *
- * @param fastify - Fastify インスタンス
- * @param userId - ユーザー ID
- * @returns PAT（存在しない場合や取得に失敗した場合は undefined）
- */
-export async function getUserPAT(
-  fastify: FastifyInstance,
-  userId: string
-): Promise<string | undefined> {
-  if (!userId) return undefined;
-
-  try {
-    const tokens = await fastify.withUserContext(userId, async tx => {
-      return tx
-        .select()
-        .from(oauthTokens)
-        .where(
-          and(
-            eq(oauthTokens.userId, userId),
-            eq(oauthTokens.provider, 'databricks'),
-            eq(oauthTokens.authType, 'pat')
-          )
-        )
-        .limit(1);
-    });
-
-    return tokens[0]?.accessToken ?? undefined;
-  } catch (error) {
-    fastify.log.warn({ userId, error }, 'Failed to fetch PAT from database');
-  }
-
-  return undefined;
-}
-
 // ----- AuthProvider 型と Factory -----
 
-type AuthType = 'pat' | 'oauth-m2m';
-
-/**
- * 認証に使用するプリンシパルの種類
- * - 'auto': PAT があれば PAT、なければ SP（デフォルト）
- * - 'pat': PAT のみ使用（なければエラー）
- * - 'sp': Service Principal のみ使用
- */
-export type PrincipalType = 'auto' | 'pat' | 'sp';
-
-interface AuthEnvVars {
-  /** Auth type (pat or oauth-m2m) */
-  DATABRICKS_AUTH_TYPE: AuthType;
+export interface ServicePrincipalEnvVars {
+  DATABRICKS_AUTH_TYPE: 'oauth-m2m';
   /** Databricks Workspace URL (e.g. https://dbc-123456789.cloud.databricks.com) */
   DATABRICKS_HOST: string;
-}
-
-export interface PatEnvVars extends AuthEnvVars {
-  DATABRICKS_AUTH_TYPE: 'pat';
-  DATABRICKS_TOKEN: string;
-}
-
-export interface ServicePrincipalEnvVars extends AuthEnvVars {
-  DATABRICKS_AUTH_TYPE: 'oauth-m2m';
   DATABRICKS_CLIENT_ID: string;
   DATABRICKS_CLIENT_SECRET: string;
 }
 
-export type AuthProvider =
-  | { type: 'pat'; getEnvVars(): PatEnvVars; getToken(): Promise<string> }
-  | {
-      type: 'oauth-m2m';
-      getEnvVars(): ServicePrincipalEnvVars;
-      getToken(): Promise<string>;
-    };
-
-/**
- * PAT を使用する AuthProvider を作成
- */
-function createPatAuthProvider(host: string, token: string): AuthProvider {
-  return {
-    type: 'pat',
-    getEnvVars: () => ({
-      DATABRICKS_AUTH_TYPE: 'pat',
-      DATABRICKS_HOST: host,
-      DATABRICKS_TOKEN: token,
-    }),
-    getToken: async () => token,
-  };
-}
+export type AuthProvider = {
+  type: 'oauth-m2m';
+  getEnvVars(): ServicePrincipalEnvVars;
+  getToken(): Promise<string>;
+};
 
 /**
  * Service Principal を使用する AuthProvider を作成
@@ -202,45 +126,13 @@ function createSpAuthProvider(host: string, clientId: string, clientSecret: stri
 }
 
 /**
- * ユーザーの認証プロバイダーを取得
+ * Service Principal の認証プロバイダーを取得
  *
  * @param fastify - Fastify インスタンス
- * @param userId - ユーザー ID
- * @param principalType - 使用するプリンシパルの種類（デフォルト: 'auto'）
- *   - 'auto': PAT があれば PAT、なければ SP
- *   - 'pat': PAT のみ使用（なければエラー）
- *   - 'sp': Service Principal のみ使用
  * @returns AuthProvider
- * @throws principalType='pat' で PAT が登録されていない場合
  */
-export async function getAuthProvider(
-  fastify: FastifyInstance,
-  userId: string,
-  principalType: PrincipalType = 'auto'
-): Promise<AuthProvider> {
+export function getAuthProvider(fastify: FastifyInstance): AuthProvider {
   const host = `https://${fastify.config.DATABRICKS_HOST}`;
   const { DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET } = fastify.config;
-
-  // SP のみを使用する場合は PAT を確認せずに返す
-  if (principalType === 'sp') {
-    return createSpAuthProvider(host, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET);
-  }
-
-  // PAT を取得
-  const token = await getUserPAT(fastify, userId);
-
-  // PAT のみを要求する場合
-  if (principalType === 'pat') {
-    if (!token) {
-      throw new Error('PAT is not registered');
-    }
-    return createPatAuthProvider(host, token);
-  }
-
-  // auto: PAT があれば PAT、なければ SP
-  if (token) {
-    return createPatAuthProvider(host, token);
-  }
-
   return createSpAuthProvider(host, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET);
 }

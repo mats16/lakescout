@@ -7,7 +7,7 @@ const __dirname = import.meta.dirname;
 // JSON Schema for environment variables
 const schema = {
   type: 'object',
-  required: ['DATABASE_URL', 'ENCRYPTION_KEY', 'DATABRICKS_HOST'],
+  required: ['DATABRICKS_HOST'],
   properties: {
     // Server
     NODE_ENV: {
@@ -22,24 +22,16 @@ const schema = {
       description:
         'Server port (used in development, overridden by DATABRICKS_APP_PORT in production)',
     },
-    // Database (required)
+    // Database (optional — empty string triggers SQLite fallback)
     DATABASE_URL: {
       type: 'string',
-      description: 'PostgreSQL connection string',
+      default: '',
+      description: 'PostgreSQL connection string (empty = SQLite fallback)',
     },
     DISABLE_AUTO_MIGRATION: {
       type: 'boolean',
       default: false,
       description: 'Disable automatic database migration on startup',
-    },
-    // Encryption (required)
-    ENCRYPTION_KEY: {
-      type: 'string',
-      minLength: 64,
-      maxLength: 64,
-      pattern: '^[0-9a-fA-F]{64}$',
-      description:
-        'AES-256-GCM encryption key (64 hex chars). Must be valid hexadecimal characters only.',
     },
     // User directories (optional)
     USER_BASE_DIR: {
@@ -133,8 +125,6 @@ declare module 'fastify' {
       DATABASE_URL: string;
       /** Disable automatic database migration on startup. */
       DISABLE_AUTO_MIGRATION: boolean;
-      /** The AES-256-GCM encryption key (64 hex chars). Leave empty for plaintext mode (NOT recommended for production). */
-      ENCRYPTION_KEY: string;
       /** The base directory for user directories (e.g. /home/app/users). */
       USER_BASE_DIR: string;
       /** The name of the running app. */
@@ -174,7 +164,10 @@ export default fp(
           process.env.NODE_ENV == 'test'
             ? false
             : {
-                path: path.join(__dirname, '../../../../.env'), // -> project root .env
+                path: [
+                  path.join(__dirname, '../../../../.env.local'), // -> project root .env.local (優先)
+                  path.join(__dirname, '../../../../.env'), // -> project root .env
+                ],
               },
       });
       // Add bin directory to PATH (for databricks-cli and jq)

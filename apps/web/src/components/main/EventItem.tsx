@@ -4,6 +4,7 @@ import {
   isSDKUserMessageEvent,
   isSDKAssistantMessageEvent,
   isSDKSystemMessageEvent,
+  isSDKResultMessageEvent,
   isTextContentBlock,
   isToolUseContentBlock,
   isImageContentBlock,
@@ -81,7 +82,7 @@ interface ToolUseContent {
 type ContentBlock = TextContent | ImageContent | ToolUseContent;
 
 interface ParsedMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'error';
   contents: ContentBlock[];
 }
 
@@ -166,8 +167,18 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
       };
     }
 
-    // result メッセージはスキップ
-    if (event.type === 'result') {
+    // result メッセージ: errors がある場合のみ表示
+    if (isSDKResultMessageEvent(event)) {
+      const { errors } = event;
+      if (Array.isArray(errors) && errors.length > 0) {
+        return {
+          role: 'error' as const,
+          contents: errors.map((err: unknown) => ({
+            type: 'text' as const,
+            text: String(err),
+          })),
+        };
+      }
       return null;
     }
 
@@ -183,6 +194,7 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
 
   const isUser = parsed.role === 'user';
   const isSystem = parsed.role === 'system';
+  const isError = parsed.role === 'error';
 
   return (
     <div className={cn('py-3', isUser && 'flex justify-end')}>
@@ -190,8 +202,10 @@ export function EventItem({ event, toolResultMap, childEventsMap }: EventItemPro
         className={cn(
           'text-sm whitespace-pre-wrap break-words',
           isUser && 'bg-muted rounded-2xl px-4 py-2 max-w-[80%] text-foreground',
-          !isUser && 'text-foreground w-full',
-          isSystem && 'text-muted-foreground text-xs'
+          !isUser && !isError && 'text-foreground w-full',
+          isSystem && 'text-muted-foreground text-xs',
+          isError &&
+            'bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3 text-destructive w-full'
         )}
       >
         {parsed.contents.map((content, index) => {
