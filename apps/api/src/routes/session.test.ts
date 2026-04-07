@@ -95,13 +95,13 @@ describe('session route - invalid session ID handling', () => {
       expect(body.message).toBe('Session not found');
     });
 
-    it('should return 404 for wrong TypeID prefix', async () => {
+    it('should return 404 for non-v7 UUID format', async () => {
       await registerPlugins();
 
-      // Use a valid TypeID format but with wrong prefix
+      // Use a UUIDv4 format (version 4, not 7)
       const response = await app.inject({
         method: 'GET',
-        url: '/api/sessions/user_01h455vb4pex5vsknk084sn02q',
+        url: '/api/sessions/550e8400-e29b-41d4-a716-446655440000',
         headers: TEST_USER_HEADERS,
       });
 
@@ -124,7 +124,7 @@ describe('session route - invalid session ID handling', () => {
       expect(response.statusCode).toBe(404);
     });
 
-    it('should accept valid session TypeID format', async () => {
+    it('should accept valid session UUIDv7 format', async () => {
       const { getSession } = await import('../services/session.service.js');
       const mockGetSession = vi.mocked(getSession);
       mockGetSession.mockResolvedValue(null); // Session doesn't exist in DB

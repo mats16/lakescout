@@ -35,29 +35,35 @@ LakeScout is a Claude Code-like AI chat application running on Databricks Apps. 
 In LakeScout, each user is assigned a dedicated file system area. This ensures data isolation between users.
 
 ```
-${USER_BASE_DIR}/
-├── user1/                          # User 1's home directory
-│   ├── .claude/
-│   │   ├── settings.local.json     # Claude settings
-│   │   └── skills/                 # User's skills
-│   │       ├── my-skill/
-│   │       │   └── SKILL.md
-│   │       └── another-skill/
-│   │           └── SKILL.md
-│   ├── session_xxx.../             # Session working directory
+${LAKESCOUT_BASE_DIR}/
+├── users/
+│   ├── user1/                          # User 1's home directory
+│   │   ├── .claude/
+│   │   │   ├── settings.local.json     # Claude settings
+│   │   │   └── skills/                 # User's skills
+│   │   │       ├── my-skill/
+│   │   │       │   └── SKILL.md
+│   │   │       └── another-skill/
+│   │   │           └── SKILL.md
+│   │   └── ...
+│   └── user2/                          # User 2's home directory
+│       └── ...
+├── sessions/
+│   ├── session_xxx.../                 # Session working directory
 │   └── session_yyy.../
-└── user2/                          # User 2's home directory
-    └── ...
+└── db/
+    └── lakescout.sqlite                # SQLite database (dev fallback)
 ```
 
 ### Directory Roles
 
 | Directory | Description |
 |-----------|-------------|
-| `${USER_BASE_DIR}/${userId}` | User's home directory. All user data is stored here |
+| `${LAKESCOUT_BASE_DIR}/users/${userId}` | User's home directory. User settings and skills are stored here |
 | `${userHome}/.claude/` | Claude-related configuration files |
 | `${userHome}/.claude/skills/` | Skills created or imported by the user |
-| `${userHome}/${sessionId}/` | Working directory for each session |
+| `${LAKESCOUT_BASE_DIR}/sessions/${sessionId}` | Working directory for each session |
+| `${LAKESCOUT_BASE_DIR}/db/` | SQLite database directory (development) |
 
 ### Skills and File System
 
@@ -278,7 +284,7 @@ The database uses PostgreSQL RLS to restrict users to accessing only their own d
 
 #### File System Isolation
 
-- Each user's files are isolated under `${USER_BASE_DIR}/${userId}`
+- Each user's files are isolated under `${LAKESCOUT_BASE_DIR}/users/${userId}`
 - Validation implemented to prevent path traversal attacks
 - Session deletion only removes the corresponding directory
 

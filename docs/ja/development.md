@@ -138,8 +138,8 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=databricks-claude-opus-4-6
 ANTHROPIC_DEFAULT_SONNET_MODEL=databricks-claude-sonnet-4-6
 ANTHROPIC_DEFAULT_HAIKU_MODEL=databricks-claude-haiku-4-5
 
-# ユーザーディレクトリ
-USER_BASE_DIR=/path/to/user/directories
+# LakeScout ベースディレクトリ
+LAKESCOUT_BASE_DIR=/path/to/base/directory
 ```
 
 ### 3.4 暗号化キーの生成

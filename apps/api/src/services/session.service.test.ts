@@ -83,6 +83,7 @@ describe('session.service', () => {
       },
       config: {
         DATABRICKS_HOST: 'test.databricks.com',
+        LAKESCOUT_BASE_DIR: '/home/app',
         PATH: '/usr/bin',
         ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'opus',
@@ -154,9 +155,11 @@ describe('SessionId', () => {
     expect(id1.toString()).not.toBe(id2.toString());
   });
 
-  it('should have correct prefix', () => {
+  it('should generate UUIDv7 format', () => {
     const sessionId = new SessionId();
-    expect(sessionId.toString()).toMatch(/^session_/);
+    expect(sessionId.toString()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
   });
 
   it('should convert to and from UUID', () => {
@@ -175,11 +178,8 @@ describe('SessionId', () => {
     expect(restored.toString()).toBe(str);
   });
 
-  it('should get suffix correctly', () => {
+  it('toString and toUUID should return the same value', () => {
     const sessionId = new SessionId();
-    const suffix = sessionId.getSuffix();
-
-    // suffix should be the part after the prefix
-    expect(sessionId.toString()).toBe(`session_${suffix}`);
+    expect(sessionId.toString()).toBe(sessionId.toUUID());
   });
 });

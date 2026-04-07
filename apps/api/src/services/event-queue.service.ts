@@ -256,10 +256,8 @@ export function enqueueSessionEvent(
   fastify: FastifyInstance,
   params: {
     userId: string;
-    /** セッションID（TypeID 形式） */
+    /** セッションID（UUIDv7 形式） */
     sessionId: string;
-    /** セッションUUID（DB 用） */
-    sessionUUID: string;
     eventUuid: string;
     type: string;
     subtype: string | null;
@@ -268,7 +266,7 @@ export function enqueueSessionEvent(
 ): void {
   fastify.eventBatcher.add({
     userId: params.userId,
-    sessionId: params.sessionUUID,
+    sessionId: params.sessionId,
     eventUuid: params.eventUuid,
     type: params.type,
     subtype: params.subtype,

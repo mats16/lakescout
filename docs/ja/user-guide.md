@@ -35,29 +35,35 @@ LakeScout は Databricks Apps 上で動作する Claude Code ライクな AI チ
 LakeScout では、各ユーザーに専用のファイルシステム領域が割り当てられます。これにより、ユーザー間のデータ分離が保証されます。
 
 ```
-${USER_BASE_DIR}/
-├── user1/                          # ユーザー1のホームディレクトリ
-│   ├── .claude/
-│   │   ├── settings.local.json     # Claude 設定
-│   │   └── skills/                 # ユーザーのスキル
-│   │       ├── my-skill/
-│   │       │   └── SKILL.md
-│   │       └── another-skill/
-│   │           └── SKILL.md
-│   ├── session_xxx.../             # セッション作業ディレクトリ
+${LAKESCOUT_BASE_DIR}/
+├── users/
+│   ├── user1/                          # ユーザー1のホームディレクトリ
+│   │   ├── .claude/
+│   │   │   ├── settings.local.json     # Claude 設定
+│   │   │   └── skills/                 # ユーザーのスキル
+│   │   │       ├── my-skill/
+│   │   │       │   └── SKILL.md
+│   │   │       └── another-skill/
+│   │   │           └── SKILL.md
+│   │   └── ...
+│   └── user2/                          # ユーザー2のホームディレクトリ
+│       └── ...
+├── sessions/
+│   ├── session_xxx.../                 # セッション作業ディレクトリ
 │   └── session_yyy.../
-└── user2/                          # ユーザー2のホームディレクトリ
-    └── ...
+└── db/
+    └── lakescout.sqlite                # SQLite データベース（開発用フォールバック）
 ```
 
 ### ディレクトリの役割
 
 | ディレクトリ | 説明 |
 |-------------|------|
-| `${USER_BASE_DIR}/${userId}` | ユーザーのホームディレクトリ。すべてのユーザーデータはここに格納 |
+| `${LAKESCOUT_BASE_DIR}/users/${userId}` | ユーザーのホームディレクトリ。ユーザー設定とスキルを格納 |
 | `${userHome}/.claude/` | Claude 関連の設定ファイル |
 | `${userHome}/.claude/skills/` | ユーザーが作成・インポートしたスキル |
-| `${userHome}/${sessionId}/` | セッションごとの作業ディレクトリ |
+| `${LAKESCOUT_BASE_DIR}/sessions/${sessionId}` | セッションごとの作業ディレクトリ |
+| `${LAKESCOUT_BASE_DIR}/db/` | SQLite データベースディレクトリ（開発用） |
 
 ### スキルとファイルシステム
 
@@ -278,7 +284,7 @@ Claude がセッション内で使用する主な CLI コマンド:
 
 #### ファイルシステム分離
 
-- 各ユーザーのファイルは `${USER_BASE_DIR}/${userId}` 配下に隔離
+- 各ユーザーのファイルは `${LAKESCOUT_BASE_DIR}/users/${userId}` 配下に隔離
 - パストラバーサル攻撃を防止するバリデーション実装
 - セッション削除時は該当ディレクトリのみ削除
 

@@ -138,8 +138,8 @@ ANTHROPIC_DEFAULT_OPUS_MODEL=databricks-claude-opus-4-6
 ANTHROPIC_DEFAULT_SONNET_MODEL=databricks-claude-sonnet-4-6
 ANTHROPIC_DEFAULT_HAIKU_MODEL=databricks-claude-haiku-4-5
 
-# User directories
-USER_BASE_DIR=/path/to/user/directories
+# LakeScout base directory
+LAKESCOUT_BASE_DIR=/path/to/base/directory
 ```
 
 ### 3.4 Generate Encryption Key
