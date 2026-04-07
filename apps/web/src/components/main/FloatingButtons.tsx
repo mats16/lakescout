@@ -3,23 +3,21 @@ import { FolderCode } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 
 interface FloatingButtonsProps {
-  /** Workspace object ID - ボタン表示は id の有無で判定 */
-  workspaceObjectId?: number;
+  /** Workspace パス - ボタン表示はパスの有無で判定 */
+  workspacePath?: string;
 }
 
-export function FloatingButtons({ workspaceObjectId }: FloatingButtonsProps) {
-  const showWorkspaceButton = workspaceObjectId !== undefined;
+export function FloatingButtons({ workspacePath }: FloatingButtonsProps) {
   const { t } = useTranslation();
   const { databricksHost } = useUser();
 
   const handleOpenWorkspace = () => {
-    if (!workspaceObjectId || !databricksHost) return;
-    // object_id を使用して正しい URL 形式で開く
-    const workspaceUrl = `https://${databricksHost}/browse/folders/${workspaceObjectId}`;
+    if (!workspacePath || !databricksHost) return;
+    const workspaceUrl = `https://${databricksHost}/#workspace${workspacePath}`;
     window.open(workspaceUrl, '_blank');
   };
 
-  if (!showWorkspaceButton) {
+  if (!workspacePath) {
     return null;
   }
 

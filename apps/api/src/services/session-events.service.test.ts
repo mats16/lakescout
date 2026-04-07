@@ -3,13 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import { listSessionEvents, getSessionLastEventId } from './session-events.service.js';
 import { SessionId } from '../models/session.model.js';
 
-// テスト用の定数（TypeID 形式と対応する UUID）
-// TypeID session_01h455vb4pex5vsknk084sn02q の UUID
-const TEST_SESSION_TYPEID = 'session_01h455vb4pex5vsknk084sn02q';
+// テスト用の定数（UUIDv7 形式）
 const TEST_SESSION_UUID = '0188a5eb-4b84-7095-bae8-084200ae0295';
 
 // テスト用の SessionId オブジェクト
-const testSessionId = SessionId.fromString(TEST_SESSION_TYPEID);
+const testSessionId = SessionId.fromString(TEST_SESSION_UUID);
 
 describe('session-events.service', () => {
   beforeEach(() => {

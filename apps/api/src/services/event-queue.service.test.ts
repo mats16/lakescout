@@ -290,8 +290,7 @@ describe('enqueueSessionEvent', () => {
 
     enqueueSessionEvent(fastify, {
       userId: 'user-123',
-      sessionId: 'session_01abc123',
-      sessionUUID: '019bdf24-b923-7aaa-918c-8ce71422def0',
+      sessionId: '019bdf24-b923-7aaa-918c-8ce71422def0',
       eventUuid: 'event-uuid-123',
       type: 'assistant',
       subtype: null,
@@ -310,7 +309,7 @@ describe('enqueueSessionEvent', () => {
     );
   });
 
-  it('should use sessionUUID (not sessionId) for DB payload', () => {
+  it('should pass sessionId directly to batcher', () => {
     const mockAdd = vi.fn();
     const fastify = {
       eventBatcher: { add: mockAdd },
@@ -318,8 +317,7 @@ describe('enqueueSessionEvent', () => {
 
     enqueueSessionEvent(fastify, {
       userId: 'user-123',
-      sessionId: 'session_01xyz',
-      sessionUUID: 'uuid-for-db',
+      sessionId: '019bdf24-b923-7aaa-918c-8ce71422def0',
       eventUuid: 'event-1',
       type: 'user',
       subtype: null,
@@ -327,6 +325,6 @@ describe('enqueueSessionEvent', () => {
     });
 
     const payload = mockAdd.mock.calls[0][0];
-    expect(payload.sessionId).toBe('uuid-for-db');
+    expect(payload.sessionId).toBe('019bdf24-b923-7aaa-918c-8ce71422def0');
   });
 });

@@ -29,7 +29,11 @@ export default databaseUrl
       out: './migrations-sqlite',
       dialect: 'sqlite',
       dbCredentials: {
-        url: './db/lakescout.sqlite',
+        url: path.join(
+          process.env.LAKESCOUT_BASE_DIR || path.join(__dirname, '../../tmp'),
+          'db',
+          'lakescout.sqlite'
+        ),
       },
       verbose: true,
       strict: true,

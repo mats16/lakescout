@@ -32,7 +32,7 @@ export function AppLayout() {
 
   const handleSelectSession = useCallback(
     (selectedSessionId: string) => {
-      navigate(`/${selectedSessionId}`);
+      navigate(`/sessions/${selectedSessionId}`);
     },
     [navigate]
   );

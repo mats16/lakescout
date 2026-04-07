@@ -1,6 +1,8 @@
 command: ["npm", "run", "start", "--workspace=apps/api"]
 
 env:
+  - name: LAKESCOUT_BASE_DIR
+    value: /home/app
   - name: NODE_ENV
     value: development
 #  - name: DATABASE_URL

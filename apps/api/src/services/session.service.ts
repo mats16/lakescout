@@ -22,7 +22,6 @@ import type {
   SessionUpdateRequest,
   DatabricksWorkspaceSource,
 } from '@repo/types';
-import { ClaudeSettings } from '../models/claude-settings.model.js';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
 import { insertSessionEventInTx } from '../db/helpers.js';
@@ -77,8 +76,7 @@ function saveAndBroadcastEvent(
   // 1. バッチバッファに追加（バッチサイズ到達 or インターバル経過で DB 永続化）
   enqueueSessionEvent(fastify, {
     userId,
-    sessionId: sessionId.toString(),
-    sessionUUID: sessionId.toUUID(),
+    sessionId: sessionId.toUUID(),
     eventUuid,
     type: message.type,
     subtype: eventSubtype ?? null,
@@ -261,8 +259,8 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         },
       };
     }
-    const workspacePath = sessionContext.sources.find(
-      (s): s is DatabricksWorkspaceSource => s.type === 'databricks_workspace'
+    const workspacePath = sessionContext.outcomes.find(
+      (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
     )?.path;
 
     const response = query({
@@ -326,7 +324,7 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
  * 新規セッションを作成する
  *
  * 処理フロー:
- * 1. TypeID で session_id 生成
+ * 1. UUIDv7 で session_id 生成
  * 2. sessions INSERT (status='init')
  * 3. claude-agent-sdk で query() 実行
  * 4. 即座にレスポンスを返し、すべてのイベントはバックグラウンドで処理
@@ -348,36 +346,24 @@ export async function createSession(
 ): Promise<SessionCreateResponse> {
   const { events, session_context, title } = request;
 
-  // 1. SessionId を生成（UUIDv7 ベース）
+  // 1. SessionId を生成（UUIDv7）
   const sessionId = new SessionId();
 
   // 2. ユーザーメッセージのテキストを抽出
   const userEvent = events[0];
   const userContent = userEvent?.data.message.content ?? '';
 
-  // 3. cwd の生成（userHome + sessionId）TypeID 形式で使用
-  const { userHome } = ctx;
-  /** Claude Code Working Directory  (e.g. /home/app/users/user1/session_xxx) */
-  const cwd = path.join(userHome, sessionId.toString());
+  // 3. cwd の生成（LAKESCOUT_BASE_DIR/sessions/sessionId）
+  /** Claude Code Working Directory  (e.g. /home/app/sessions/session_xxx) */
+  const cwd = path.join(fastify.config.LAKESCOUT_BASE_DIR, 'sessions', sessionId.toString());
 
   await ensureDirectory(cwd);
 
-  // 4. settings.local.json の生成（databricks_workspace がある場合）
-  const workspaceSources = session_context.sources.filter(
-    (s): s is DatabricksWorkspaceSource => s.type === 'databricks_workspace'
-  );
-
-  if (workspaceSources.length > 0) {
-    const exportCommands = workspaceSources.map(source =>
-      ClaudeSettings.createWorkspaceExportCommand(source.path)
-    );
-    const claudeSettings = new ClaudeSettings().addSessionStartHooks(exportCommands);
-    await claudeSettings.saveToSession(cwd);
-    fastify.log.info(
-      { sessionId: sessionId.toString(), workspaceSources },
-      'Created settings.local.json with SessionStart hooks'
-    );
-  }
+  // 4. outcomes のパス内変数を解決（{session_id} → 実際のセッションID）
+  const resolvedOutcomes = session_context.outcomes.map(outcome => ({
+    ...outcome,
+    path: outcome.path.replace('{session_id}', sessionId.toString()),
+  }));
 
   // 5. context オブジェクトの構築
   const sessionContext: SessionContextResponse = {
@@ -386,13 +372,13 @@ export async function createSession(
     cwd,
     model: session_context.model,
     sources: session_context.sources,
-    outcomes: session_context.outcomes,
+    outcomes: resolvedOutcomes,
   };
 
-  // 5. タイムスタンプを設定（レスポンス用）
+  // 6. タイムスタンプを設定（レスポンス用）
   const now = new Date();
 
-  // 6. sessions を INSERT (status='init')
+  // 7. sessions を INSERT (status='init')
   // user message は init イベント受信時に saveAndBroadcastEvent で処理
   await fastify.withUserContext(userId, async tx => {
     await tx.insert(sessions).values({
@@ -405,7 +391,7 @@ export async function createSession(
     });
   });
 
-  // 7. SDK query パイプラインを開始
+  // 8. SDK query パイプラインを開始
   const prompt: string | SDKUserMessage =
     Array.isArray(userContent) && userEvent
       ? {
@@ -429,7 +415,7 @@ export async function createSession(
     initialUserEvent: userEvent?.data,
   });
 
-  // 9. 即座にレスポンス返却（TypeID 形式）
+  // 9. 即座にレスポンス返却
   return {
     id: sessionId.toString(),
     session_status: 'init',
@@ -488,7 +474,6 @@ export async function listSessions(
 
 /**
  * DB行をSessionResponseに変換するヘルパー
- * DB の UUID を TypeID 形式に変換してレスポンスを返す
  */
 function toSessionResponse(row: {
   id: string;
@@ -498,9 +483,8 @@ function toSessionResponse(row: {
   createdAt: Date;
   updatedAt: Date;
 }): SessionResponse {
-  const sessionId = SessionId.fromUUID(row.id);
   return {
-    id: sessionId.toString(),
+    id: row.id,
     title: row.title,
     session_status: row.status as SessionStatus,
     created_at: row.createdAt.toISOString(),
@@ -671,17 +655,14 @@ export async function sendMessageToSession(
  * @param fastify - Fastify インスタンス
  * @param userId - ユーザーID
  * @param sessionId - SessionId オブジェクト
- * @param ctx - ユーザーコンテキスト
  * @returns アーカイブ後のセッション情報（見つからない場合は null）
  */
 export async function archiveSession(
   fastify: FastifyInstance,
   userId: string,
-  sessionId: SessionId,
-  ctx: UserContext
+  sessionId: SessionId
 ): Promise<SessionResponse | null> {
-  // user_home を取得（ベースディレクトリとして使用）
-  const { userHome } = ctx;
+  const sessionsBaseDir = path.join(fastify.config.LAKESCOUT_BASE_DIR, 'sessions');
 
   return fastify.withUserContext(userId, async tx => {
     // 1. セッション情報を取得（cwd を取得するため）
@@ -705,13 +686,13 @@ export async function archiveSession(
 
     if (rows.length === 0) return null;
 
-    // 3. Working Directory を削除（user_home 配下に制限、トランザクション外で非同期実行）
-    if (cwd && userHome) {
-      validatePathWithinBase(cwd, userHome)
+    // 3. Working Directory を削除（sessions ベースディレクトリ配下に制限、トランザクション外で非同期実行）
+    if (cwd) {
+      validatePathWithinBase(cwd, sessionsBaseDir)
         .then(safeCwd => removeDirectory(safeCwd))
         .catch(error => {
           fastify.log.error(
-            { sessionId: sessionId.toString(), cwd, userHome, error },
+            { sessionId: sessionId.toString(), cwd, sessionsBaseDir, error },
             'Failed to remove working directory'
           );
         });

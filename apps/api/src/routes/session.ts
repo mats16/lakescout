@@ -62,7 +62,7 @@ function closeWebSocketWithError(
 
 /**
  * セッションIDをパースするヘルパー
- * 無効な TypeID 形式の場合は null を返す
+ * 無効な UUIDv7 形式の場合は null を返す
  */
 function parseSessionId(sessionIdStr: string, logger?: FastifyBaseLogger): SessionId | null {
   try {
@@ -230,8 +230,7 @@ const sessionRoute: FastifyPluginAsync = async fastify => {
     }
 
     try {
-      const ctx = createUserContext(fastify, request);
-      const session = await archiveSession(fastify, user.id, sessionId, ctx);
+      const session = await archiveSession(fastify, user.id, sessionId);
 
       if (!session) {
         return sendError(reply, 404, 'NotFound', 'Session not found');

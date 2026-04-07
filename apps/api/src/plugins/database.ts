@@ -78,9 +78,7 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   const sqliteSchema = await import('../db/schema.sqlite.js');
 
   // データディレクトリを確保
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const dataDir = path.join(__dirname, '../../db');
+  const dataDir = path.join(fastify.config.LAKESCOUT_BASE_DIR, 'db');
   const { mkdirSync } = await import('fs');
   mkdirSync(dataDir, { recursive: true });
 

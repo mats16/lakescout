@@ -5,9 +5,7 @@ import { isNewSessionNavigationState } from '@/types/navigation';
 import type {
   SessionCreateRequest,
   UserMessageContentBlock,
-  SessionOutcome,
   DatabricksWorkspaceSource,
-  WorkspaceSelection,
 } from '@repo/types';
 import { MainHeader } from './MainHeader';
 import { MessageArea } from './MessageArea';
@@ -67,18 +65,15 @@ export function MainArea({
     return sessionStatus === 'init' || sessionStatus === 'running';
   }, [sessionStatus]);
 
-  // session_context.outcomes から databricks_workspace を取得
-  const databricksWorkspaceOutcome = useMemo(() => {
+  // session_context.outcomes から databricks_workspace のパスを取得
+  const workspacePath = useMemo(() => {
     const outcomes = session?.session_context?.outcomes;
     if (!outcomes) return null;
-    return (
-      outcomes.find((o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace') ??
-      null
+    const outcome = outcomes.find(
+      (o): o is DatabricksWorkspaceSource => o.type === 'databricks_workspace'
     );
+    return outcome?.path ?? null;
   }, [session?.session_context?.outcomes]);
-
-  // フローティングボタンを表示するかどうか
-  const hasFloatingButtons = !!databricksWorkspaceOutcome;
 
   const handleSend = (content: UserMessageContentBlock[]) => {
     onSendMessage?.(content);
@@ -97,7 +92,6 @@ export function MainArea({
   const handleNewSession = async (
     content: UserMessageContentBlock[],
     modelId: string,
-    workspaceSelection: WorkspaceSelection | null,
     enableDatabricksSqlWrite: boolean
   ) => {
     try {
@@ -109,16 +103,6 @@ export function MainArea({
       // タイトル生成用にテキストを抽出
       const textContent = extractTextFromContent(content);
       const title = await sessionService.generateTitle(textContent);
-
-      // outcomes の構築
-      const outcomes: SessionOutcome[] = [];
-      if (workspaceSelection) {
-        outcomes.push({
-          type: 'databricks_workspace',
-          path: workspaceSelection.path,
-          id: workspaceSelection.object_id,
-        });
-      }
 
       const request: SessionCreateRequest = {
         title: title ?? undefined,
@@ -139,16 +123,14 @@ export function MainArea({
         ],
         session_context: {
           model: modelId as 'opus' | 'sonnet' | 'haiku',
-          sources: workspaceSelection
-            ? [
-                {
-                  type: 'databricks_workspace',
-                  path: workspaceSelection.path,
-                  id: workspaceSelection.object_id,
-                },
-              ]
-            : [],
-          outcomes: outcomes,
+          sources: [],
+          outcomes: [
+            {
+              type: 'databricks_workspace',
+              path: '/Workspace/Shared/LakeScout/sessions/{session_id}',
+              id: 0,
+            },
+          ],
           disallowed_tools: [...(enableDatabricksSqlWrite ? [] : ['mcp__sql__execute_sql'])],
         },
       };
@@ -157,7 +139,7 @@ export function MainArea({
       onSessionCreated?.();
 
       // navigate state に初期メッセージを渡す
-      navigate(`/${response.id}`, {
+      navigate(`/sessions/${response.id}`, {
         state: {
           initialMessage: {
             type: 'user',
@@ -204,7 +186,7 @@ export function MainArea({
         isLoading={isLoading}
         error={error}
         isAgentThinking={isAgentThinking}
-        hasFloatingButton={hasFloatingButtons}
+        hasFloatingButton={!!workspacePath}
       />
       <InputArea
         sessionId={sessionId}
@@ -213,7 +195,7 @@ export function MainArea({
         isAgentThinking={isAgentThinking}
         disabled={session?.session_status === 'archived'}
       />
-      {hasFloatingButtons && <FloatingButtons workspaceObjectId={databricksWorkspaceOutcome?.id} />}
+      {workspacePath && <FloatingButtons workspacePath={workspacePath} />}
     </div>
   );
 }
