@@ -25,7 +25,7 @@ const titleRoute: FastifyPluginAsync = async fastify => {
       return reply.status(400).send(error);
     }
 
-    // PAT を優先的に取得、なければ SP トークンにフォールバック
+    // SP トークンを取得
     const ctx = createUserContext(fastify, request);
     const authProvider = ctx.getAuthProvider();
     let accessToken: string;
@@ -34,7 +34,7 @@ const titleRoute: FastifyPluginAsync = async fastify => {
     } catch {
       const error: ApiError = {
         error: 'Unauthorized',
-        message: 'Access token is required (PAT or Service Principal)',
+        message: 'Access token is required (Service Principal)',
         statusCode: 401,
       };
       return reply.status(401).send(error);

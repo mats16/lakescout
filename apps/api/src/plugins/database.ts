@@ -143,7 +143,6 @@ async function initSqlite(fastify: ReturnType<typeof import('fastify').default>)
   // better-sqlite3 のトランザクションは同期のみ対応のため、db を直接渡す
   fastify.decorate(
     'withUserContext',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async <T>(userId: string, callback: WithUserContextCallback<T>): Promise<T> => {
       validateUserId(userId);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,6 +245,12 @@ export default fp(
       if (fastify.config.DATABASE_URL) {
         await initPostgres(fastify);
       } else {
+        if (fastify.config.NODE_ENV === 'production') {
+          throw new Error(
+            'DATABASE_URL is required in production environment. SQLite fallback is only available in development.'
+          );
+        }
+        fastify.log.warn('DATABASE_URL is not set — using SQLite fallback (development only)');
         await initSqlite(fastify);
       }
     } catch (error) {

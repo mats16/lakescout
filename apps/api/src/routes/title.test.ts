@@ -183,7 +183,7 @@ describe('title route', () => {
       expect(response.statusCode).toBe(401);
       const body = response.json();
       expect(body.error).toBe('Unauthorized');
-      expect(body.message).toBe('Access token is required (PAT or Service Principal)');
+      expect(body.message).toBe('Access token is required (Service Principal)');
     });
 
     it('should use SP token when PAT is not available', async () => {

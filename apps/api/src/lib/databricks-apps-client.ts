@@ -2,7 +2,7 @@
  * Databricks Apps API クライアント
  *
  * Databricks Apps の作成、デプロイ、削除などの操作を行うクライアントです。
- * AuthProvider を使用して認証します（PAT または Service Principal）。
+ * AuthProvider を使用して認証します（Service Principal）。
  */
 
 import type { DatabricksApp, AppDeployment } from '@repo/types';

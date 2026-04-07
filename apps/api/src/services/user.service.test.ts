@@ -20,25 +20,24 @@ describe('user.service', () => {
     const mockValues = vi.fn().mockReturnThis();
     const mockOnConflictDoNothing = vi.fn().mockResolvedValue(undefined);
 
-    const mockExecute = vi.fn().mockResolvedValue(undefined);
-
-    const mockTransaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
-      const mockTx = {
-        execute: mockExecute,
-        insert: mockInsert,
-        values: mockValues,
-        onConflictDoNothing: mockOnConflictDoNothing,
-      };
-
-      // Chain methods correctly
-      mockInsert.mockReturnValue({
-        values: vi.fn().mockReturnValue({
+    const mockWithUserContext = vi.fn(
+      async (_userId: string, callback: (tx: unknown) => Promise<unknown>) => {
+        const mockTx = {
+          insert: mockInsert,
+          values: mockValues,
           onConflictDoNothing: mockOnConflictDoNothing,
-        }),
-      });
+        };
 
-      return callback(mockTx);
-    });
+        // Chain methods correctly
+        mockInsert.mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            onConflictDoNothing: mockOnConflictDoNothing,
+          }),
+        });
+
+        return callback(mockTx);
+      }
+    );
 
     return {
       db: {
@@ -48,8 +47,8 @@ describe('user.service', () => {
             limit: mockLimit,
           }),
         }),
-        transaction: mockTransaction,
       },
+      withUserContext: mockWithUserContext,
     } as unknown as FastifyInstance;
   };
 
@@ -61,7 +60,7 @@ describe('user.service', () => {
       const result = await getOrCreateUser(fastify, userInfo);
 
       expect(result).toEqual(userInfo);
-      expect(fastify.db.transaction).not.toHaveBeenCalled();
+      expect(fastify.withUserContext).not.toHaveBeenCalled();
     });
 
     it('should create new user when not exists', async () => {
@@ -71,65 +70,35 @@ describe('user.service', () => {
       const result = await getOrCreateUser(fastify, userInfo);
 
       expect(result).toEqual(userInfo);
-      expect(fastify.db.transaction).toHaveBeenCalled();
+      expect(fastify.withUserContext).toHaveBeenCalledWith('new-user-456', expect.any(Function));
     });
 
-    it('should execute RLS context setting in transaction', async () => {
-      let executeCalled = false;
-      let executeArg: unknown = null;
-
-      const mockTransaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
-        const mockTx = {
-          execute: vi.fn((arg: unknown) => {
-            executeCalled = true;
-            executeArg = arg;
-            return Promise.resolve(undefined);
-          }),
-          insert: vi.fn().mockReturnValue({
-            values: vi.fn().mockReturnValue({
-              onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
-            }),
-          }),
-        };
-        return callback(mockTx);
-      });
-
-      const fastify = {
-        db: {
-          select: vi.fn().mockReturnThis(),
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([]),
-            }),
-          }),
-          transaction: mockTransaction,
-        },
-      } as unknown as FastifyInstance;
+    it('should call withUserContext with the correct userId', async () => {
+      const fastify = createMockFastify(false);
 
       await getOrCreateUser(fastify, { id: 'user-123', name: 'Test', email: 'test@test.com' });
 
-      expect(executeCalled).toBe(true);
-      // The execute should be called with SQL template for set_config
-      expect(executeArg).toBeDefined();
+      expect(fastify.withUserContext).toHaveBeenCalledWith('user-123', expect.any(Function));
     });
 
     it('should insert into users table', async () => {
       let insertCalled = false;
 
-      const mockTransaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
-        const mockTx = {
-          execute: vi.fn().mockResolvedValue(undefined),
-          insert: vi.fn(() => {
-            insertCalled = true;
-            return {
-              values: vi.fn().mockReturnValue({
-                onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
-              }),
-            };
-          }),
-        };
-        return callback(mockTx);
-      });
+      const mockWithUserContext = vi.fn(
+        async (_userId: string, callback: (tx: unknown) => Promise<unknown>) => {
+          const mockTx = {
+            insert: vi.fn(() => {
+              insertCalled = true;
+              return {
+                values: vi.fn().mockReturnValue({
+                  onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+                }),
+              };
+            }),
+          };
+          return callback(mockTx);
+        }
+      );
 
       const fastify = {
         db: {
@@ -139,34 +108,34 @@ describe('user.service', () => {
               limit: vi.fn().mockResolvedValue([]),
             }),
           }),
-          transaction: mockTransaction,
         },
+        withUserContext: mockWithUserContext,
       } as unknown as FastifyInstance;
 
       await getOrCreateUser(fastify, { id: 'user-123', name: 'Test', email: 'test@test.com' });
 
-      // Transaction should be called and insert should happen
-      expect(mockTransaction).toHaveBeenCalled();
+      expect(mockWithUserContext).toHaveBeenCalled();
       expect(insertCalled).toBe(true);
     });
 
     it('should insert into user_settings table', async () => {
       let insertCount = 0;
 
-      const mockTransaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
-        const mockTx = {
-          execute: vi.fn().mockResolvedValue(undefined),
-          insert: vi.fn(() => {
-            insertCount++;
-            return {
-              values: vi.fn().mockReturnValue({
-                onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
-              }),
-            };
-          }),
-        };
-        return callback(mockTx);
-      });
+      const mockWithUserContext = vi.fn(
+        async (_userId: string, callback: (tx: unknown) => Promise<unknown>) => {
+          const mockTx = {
+            insert: vi.fn(() => {
+              insertCount++;
+              return {
+                values: vi.fn().mockReturnValue({
+                  onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+                }),
+              };
+            }),
+          };
+          return callback(mockTx);
+        }
+      );
 
       const fastify = {
         db: {
@@ -176,8 +145,8 @@ describe('user.service', () => {
               limit: vi.fn().mockResolvedValue([]),
             }),
           }),
-          transaction: mockTransaction,
         },
+        withUserContext: mockWithUserContext,
       } as unknown as FastifyInstance;
 
       await getOrCreateUser(fastify, { id: 'user-123', name: 'Test', email: 'test@test.com' });
@@ -189,20 +158,21 @@ describe('user.service', () => {
     it('should use onConflictDoNothing for race condition handling', async () => {
       const onConflictCalls: number[] = [];
 
-      const mockTransaction = vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
-        const mockTx = {
-          execute: vi.fn().mockResolvedValue(undefined),
-          insert: vi.fn(() => ({
-            values: vi.fn().mockReturnValue({
-              onConflictDoNothing: vi.fn(() => {
-                onConflictCalls.push(1);
-                return Promise.resolve(undefined);
+      const mockWithUserContext = vi.fn(
+        async (_userId: string, callback: (tx: unknown) => Promise<unknown>) => {
+          const mockTx = {
+            insert: vi.fn(() => ({
+              values: vi.fn().mockReturnValue({
+                onConflictDoNothing: vi.fn(() => {
+                  onConflictCalls.push(1);
+                  return Promise.resolve(undefined);
+                }),
               }),
-            }),
-          })),
-        };
-        return callback(mockTx);
-      });
+            })),
+          };
+          return callback(mockTx);
+        }
+      );
 
       const fastify = {
         db: {
@@ -212,8 +182,8 @@ describe('user.service', () => {
               limit: vi.fn().mockResolvedValue([]),
             }),
           }),
-          transaction: mockTransaction,
         },
+        withUserContext: mockWithUserContext,
       } as unknown as FastifyInstance;
 
       await getOrCreateUser(fastify, { id: 'user-123', name: 'Test', email: 'test@test.com' });

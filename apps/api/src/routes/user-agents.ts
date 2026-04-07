@@ -426,15 +426,6 @@ const userAgentsRoute: FastifyPluginAsync = async fastify => {
     } catch (error) {
       request.log.error(error, 'Failed to backup agents');
 
-      // PAT未登録エラー
-      if ((error as Error).message?.includes('PAT is required')) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'PAT is required for backup operation',
-          statusCode: 401,
-        });
-      }
-
       return reply.status(500).send({
         error: 'InternalServerError',
         message: 'Failed to backup agents to Workspace',
@@ -466,15 +457,6 @@ const userAgentsRoute: FastifyPluginAsync = async fastify => {
       return reply.send(result);
     } catch (error) {
       request.log.error(error, 'Failed to restore agents');
-
-      // PAT未登録エラー
-      if ((error as Error).message?.includes('PAT is required')) {
-        return reply.status(401).send({
-          error: 'Unauthorized',
-          message: 'PAT is required for restore operation',
-          statusCode: 401,
-        });
-      }
 
       return reply.status(500).send({
         error: 'InternalServerError',

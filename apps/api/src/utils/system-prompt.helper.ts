@@ -113,31 +113,28 @@ Instructions:
 ### App Name:
 
 The app name is **automatically generated** from the session ID. You don't need to choose an app name.
-Use the MCP tools below - they already know the correct app name.
 
 ### Important Instructions:
 
 **Use TodoWrite to create tasks for each step below.** Mark each task complete as you finish it.
 Do not consider the work done until the app is successfully deployed and verified.
 
-1. **CREATE** the app using \`mcp__dbapps__create\` (takes ~2 minutes)
+1. **CREATE** the app: \`databricks apps create --name "$APP_NAME" --description "Deployed by LakeScout"\` (takes ~2 minutes)
 2. **DEVELOP** all your changes in the current working directory
 3. **PUSH** your completed work to the specified Workspace path
-4. **DEPLOY** the app using \`mcp__dbapps__deploy\` (session outcomes are automatically updated)
-5. **VERIFY** deployment status using \`mcp__dbapps__get\`
+4. **DEPLOY** the app: \`databricks apps deploy "$APP_NAME" --source-code-path "$DATABRICKS_WORKSPACE_PATH"\`
+5. **VERIFY** deployment status: \`databricks apps get "$APP_NAME"\`
 
-### MCP Tools Reference:
+### CLI Reference:
 
-Use these MCP tools instead of CLI commands:
+| Command | Description |
+|---------|-------------|
+| \`databricks apps create --name "$APP_NAME"\` | Create the app |
+| \`databricks apps deploy "$APP_NAME" --source-code-path "$DATABRICKS_WORKSPACE_PATH"\` | Deploy the app |
+| \`databricks apps get "$APP_NAME"\` | Get app details and status |
+| \`databricks apps list-deployments "$APP_NAME"\` | List deployment history |
 
-| Tool | Description |
-|------|-------------|
-| \`mcp__dbapps__create\` | Create the app (app name is auto-generated) |
-| \`mcp__dbapps__deploy({ source_code_path: "$DATABRICKS_WORKSPACE_PATH" })\` | Deploy the app (auto-updates session outcomes) |
-| \`mcp__dbapps__get\` | Get app details and status |
-| \`mcp__dbapps__list_deployments\` | List deployment history |
-
-### Workspace Push (CLI):
+### Workspace Push:
 
 - To push all files from the session directory to workspace:
   \`databricks sync --include "*" --exclude .claude/settings.local.json . "$DATABRICKS_WORKSPACE_PATH"\`

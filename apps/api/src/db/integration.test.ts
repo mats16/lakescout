@@ -63,7 +63,6 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
     // FORCE RLS により、どちらのケースでも RLS が強制される
     await client`ALTER TABLE sessions FORCE ROW LEVEL SECURITY`;
     await client`ALTER TABLE user_settings FORCE ROW LEVEL SECURITY`;
-    await client`ALTER TABLE oauth_tokens FORCE ROW LEVEL SECURITY`;
   });
 
   afterAll(async () => {
@@ -76,7 +75,7 @@ describe.skipIf(!process.env.DATABASE_URL)('Database Integration Tests', () => {
     // テストデータをクリーンアップ
     // TRUNCATE は RLS をバイパスするため、ユーザーコンテキストなしで実行可能
     // CASCADE で外部キー参照を持つテーブルも一緒にクリア
-    await client`TRUNCATE TABLE session_events, sessions, oauth_tokens, user_settings, users CASCADE`;
+    await client`TRUNCATE TABLE session_events, sessions, user_settings, users CASCADE`;
   });
 
   describe('sessionEvents table', () => {

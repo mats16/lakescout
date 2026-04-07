@@ -57,14 +57,15 @@ describe('createDatabricksAppsInstruction', () => {
     expect(result).toContain('databricks sync');
   });
 
-  it('should include MCP tools reference', () => {
+  it('should include CLI reference for Databricks Apps', () => {
     const result = createDatabricksAppsInstruction('/Workspace/test');
 
-    expect(result).toContain('MCP Tools Reference');
-    expect(result).toContain('mcp__dbapps__create');
-    expect(result).toContain('mcp__dbapps__deploy');
-    expect(result).toContain('mcp__dbapps__get');
-    expect(result).toContain('mcp__dbapps__list_deployments');
+    expect(result).toContain('CLI Reference');
+    expect(result).toContain('databricks apps create');
+    expect(result).toContain('databricks apps deploy');
+    expect(result).toContain('databricks apps get');
+    expect(result).toContain('databricks apps list-deployments');
+    expect(result).not.toContain('mcp__dbapps__');
   });
 
   it('should include task instructions with CREATE step', () => {
@@ -130,7 +131,7 @@ describe('buildSystemPromptConfig', () => {
       // Apps instruction のみが使用される（排他）
       expect(result.append).toContain('Databricks Apps');
       expect(result.append).toContain('/Workspace/test');
-      expect(result.append).toContain('MCP Tools Reference');
+      expect(result.append).toContain('CLI Reference');
       // Workspace Push Requirements セクションは含まれない
       expect(result.append).not.toContain('Databricks Workspace Push Requirements');
     }
@@ -148,7 +149,7 @@ describe('buildSystemPromptConfig', () => {
     expect('append' in result).toBe(true);
     if ('append' in result) {
       expect(result.append).toContain('Databricks Apps');
-      expect(result.append).toContain('mcp__dbapps__create');
+      expect(result.append).toContain('databricks apps create');
     }
   });
 

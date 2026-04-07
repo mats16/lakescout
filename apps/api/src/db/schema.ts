@@ -8,6 +8,8 @@
 
 const useSqlite = !process.env.DATABASE_URL;
 
+// any は意図的: PgTable と SQLiteTable は型互換性がないため union 型にできない。
+// 行レベルの型（InsertUser, Session 等）は下の re-export で正しく型付けされている。
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mod: any = useSqlite ? await import('./schema.sqlite.js') : await import('./schema.pg.js');
 
