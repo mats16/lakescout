@@ -66,7 +66,7 @@ const PRESET_REPOS: PresetRepo[] = [
   {
     label: 'Awesome',
     url: 'https://github.com/VoltAgent/awesome-claude-code-subagents',
-    defaultPath: 'categories/05-data-ai',
+    defaultPath: 'categories/04-quality-security',
     defaultBranch: 'main',
   },
 ];
