@@ -24,7 +24,9 @@ interface UseMcpSelectionReturn {
   /** グローバルで有効な全 MCP サーバーの設定（session_context.mcp_config 用） */
   buildMcpConfig: () => McpConfig | undefined;
   /** セッションで選択された MCP のツールパターン（session_context.allowed_tools 用） */
-  buildMcpAllowedTools: () => string[];
+  buildAllowedTools: () => string[];
+  /** セッションで無効化された MCP のツールパターン（session_context.disallowed_tools 用） */
+  buildDisallowedTools: () => string[];
   isLoading: boolean;
 }
 
@@ -115,10 +117,22 @@ export function useMcpSelection(): UseMcpSelectionReturn {
     return { mcpServers };
   }, [items]);
 
-  // セッションで選択されたサーバーのツールパターンのみ返す
-  const buildMcpAllowedTools = useCallback((): string[] => {
-    return items.filter(i => i.enabled && i.mcp_url).map(i => `mcp__${toServerKey(i.space_id)}__*`);
-  }, [items]);
+  const buildToolPatterns = useCallback(
+    (enabled: boolean): string[] =>
+      items.filter(i => i.enabled === enabled && i.mcp_url).map(i => `mcp__${toServerKey(i.space_id)}__*`),
+    [items]
+  );
 
-  return { items, enabledCount, toggleItem, buildMcpConfig, buildMcpAllowedTools, isLoading };
+  const buildAllowedTools = useCallback((): string[] => buildToolPatterns(true), [buildToolPatterns]);
+  const buildDisallowedTools = useCallback((): string[] => buildToolPatterns(false), [buildToolPatterns]);
+
+  return {
+    items,
+    enabledCount,
+    toggleItem,
+    buildMcpConfig,
+    buildAllowedTools,
+    buildDisallowedTools,
+    isLoading,
+  };
 }

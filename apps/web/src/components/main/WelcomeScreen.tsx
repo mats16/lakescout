@@ -48,7 +48,8 @@ interface WelcomeScreenProps {
     modelId: string,
     enableDatabricksSqlWrite: boolean,
     mcpConfig?: McpConfig,
-    mcpAllowedTools?: string[]
+    allowedTools?: string[],
+    disallowedTools?: string[]
   ) => Promise<void> | void;
   sessionError?: string | null;
 }
@@ -70,7 +71,8 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
     enabledCount: mcpEnabledCount,
     toggleItem: toggleMcpItem,
     buildMcpConfig,
-    buildMcpAllowedTools,
+    buildAllowedTools,
+    buildDisallowedTools,
   } = useMcpSelection();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,13 +108,15 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
     try {
       const messageContent = buildMessageContent(content.trim(), images);
       const mcpConfig = buildMcpConfig();
-      const mcpAllowedTools = buildMcpAllowedTools();
+      const allowedTools = buildAllowedTools();
+      const disallowedTools = buildDisallowedTools();
       await onNewSession?.(
         messageContent,
         selectedModel.id,
         enableDatabricksSqlWrite,
         mcpConfig,
-        mcpAllowedTools
+        allowedTools,
+        disallowedTools
       );
       setContent('');
       clearImages();

@@ -95,7 +95,8 @@ export function MainArea({
     modelId: string,
     enableDatabricksSqlWrite: boolean,
     mcpConfig?: McpConfig,
-    mcpAllowedTools?: string[]
+    allowedTools?: string[],
+    disallowedTools?: string[]
   ) => {
     try {
       setCreateSessionError(null);
@@ -134,8 +135,11 @@ export function MainArea({
               id: 0,
             },
           ],
-          allowed_tools: mcpAllowedTools,
-          disallowed_tools: [...(enableDatabricksSqlWrite ? [] : ['mcp__dbsql__execute_sql'])],
+          allowed_tools: allowedTools,
+          disallowed_tools: [
+            ...(enableDatabricksSqlWrite ? [] : ['mcp__dbsql__execute_sql']),
+            ...(disallowedTools ?? []),
+          ],
           mcp_config: mcpConfig,
         },
       };
