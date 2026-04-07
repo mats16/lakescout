@@ -54,16 +54,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
 
     const ctx = createUserContext(fastify, request);
     const authProvider = await ctx.getAuthProvider();
-
-    if (authProvider.type !== 'pat') {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'PAT is not registered',
-        statusCode: 401,
-      });
-    }
-
-    const pat = await authProvider.getToken();
+    const token = await authProvider.getToken();
 
     const url = new URL('/api/2.0/workspace/list', `https://${databricksHost}`);
     url.searchParams.set('path', request.query.path);
@@ -72,7 +63,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
       method: 'GET',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${pat}`,
+        authorization: `Bearer ${token}`,
       },
     });
 
@@ -88,16 +79,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
 
     const ctx = createUserContext(fastify, request);
     const authProvider = await ctx.getAuthProvider();
-
-    if (authProvider.type !== 'pat') {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'PAT is not registered',
-        statusCode: 401,
-      });
-    }
-
-    const pat = await authProvider.getToken();
+    const token = await authProvider.getToken();
 
     const url = new URL('/api/2.0/workspace/get-status', `https://${databricksHost}`);
     url.searchParams.set('path', request.query.path);
@@ -106,7 +88,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
       method: 'GET',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${pat}`,
+        authorization: `Bearer ${token}`,
       },
     });
 
@@ -122,16 +104,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
 
     const ctx = createUserContext(fastify, request);
     const authProvider = await ctx.getAuthProvider();
-
-    if (authProvider.type !== 'pat') {
-      return reply.status(401).send({
-        error: 'Unauthorized',
-        message: 'PAT is not registered',
-        statusCode: 401,
-      });
-    }
-
-    const pat = await authProvider.getToken();
+    const token = await authProvider.getToken();
 
     const url = new URL('/api/2.0/workspace/mkdirs', `https://${databricksHost}`);
 
@@ -139,7 +112,7 @@ const workspaceRoute: FastifyPluginAsync = async fastify => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${pat}`,
+        authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ path: request.body.path }),
     });

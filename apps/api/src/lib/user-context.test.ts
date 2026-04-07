@@ -90,11 +90,11 @@ describe('UserContext', () => {
   describe('getAuthProvider', () => {
     it('should fetch AuthProvider and cache it', async () => {
       const mockAuthProvider = {
-        type: 'pat' as const,
+        type: 'oauth-m2m' as const,
         getEnvVars: vi.fn(),
-        getToken: vi.fn().mockResolvedValue('user-pat-token'),
+        getToken: vi.fn().mockResolvedValue('sp-token'),
       };
-      mockGetAuthProvider.mockResolvedValue(mockAuthProvider);
+      mockGetAuthProvider.mockReturnValue(mockAuthProvider);
       const fastify = createMockFastify();
       const request = createMockRequest();
 
@@ -104,7 +104,7 @@ describe('UserContext', () => {
       const provider1 = await ctx.getAuthProvider();
       expect(provider1).toBe(mockAuthProvider);
       expect(mockGetAuthProvider).toHaveBeenCalledTimes(1);
-      expect(mockGetAuthProvider).toHaveBeenCalledWith(fastify, 'test-user@example.com');
+      expect(mockGetAuthProvider).toHaveBeenCalledWith(fastify);
 
       // Second call - should use cache
       const provider2 = await ctx.getAuthProvider();
@@ -112,31 +112,13 @@ describe('UserContext', () => {
       expect(mockGetAuthProvider).toHaveBeenCalledTimes(1); // Still only 1 call
     });
 
-    it('should return PAT type AuthProvider when PAT is available', async () => {
-      const mockAuthProvider = {
-        type: 'pat' as const,
-        getEnvVars: vi.fn(),
-        getToken: vi.fn().mockResolvedValue('user-pat-token'),
-      };
-      mockGetAuthProvider.mockResolvedValue(mockAuthProvider);
-      const fastify = createMockFastify();
-      const request = createMockRequest();
-
-      const ctx = new UserContext(fastify, request);
-      const provider = await ctx.getAuthProvider();
-
-      expect(provider.type).toBe('pat');
-      const token = await provider.getToken();
-      expect(token).toBe('user-pat-token');
-    });
-
-    it('should return oauth-m2m type AuthProvider when PAT is not available', async () => {
+    it('should return oauth-m2m type AuthProvider', async () => {
       const mockAuthProvider = {
         type: 'oauth-m2m' as const,
         getEnvVars: vi.fn(),
         getToken: vi.fn().mockResolvedValue('sp-token'),
       };
-      mockGetAuthProvider.mockResolvedValue(mockAuthProvider);
+      mockGetAuthProvider.mockReturnValue(mockAuthProvider);
       const fastify = createMockFastify();
       const request = createMockRequest();
 

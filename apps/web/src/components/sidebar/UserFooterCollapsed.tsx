@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Globe, Check, Settings, ExternalLink, Sparkles, Bot } from 'lucide-react';
+import { Globe, Check, ExternalLink, Sparkles, Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -19,14 +19,12 @@ interface UserFooterCollapsedProps {
   displayName: string;
   initials: string;
   databricksHost?: string | null;
-  onSettingsOpen: () => void;
 }
 
 export function UserFooterCollapsed({
   displayName,
   initials,
   databricksHost,
-  onSettingsOpen,
 }: UserFooterCollapsedProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -62,18 +60,6 @@ export function UserFooterCollapsed({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">{t('user.agents')}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onSettingsOpen}
-              aria-label={t('user.settings')}
-              className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent transition-colors"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{t('user.settings')}</TooltipContent>
         </Tooltip>
       </div>
 

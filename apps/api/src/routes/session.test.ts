@@ -35,9 +35,9 @@ vi.mock('../lib/user-context.js', () => ({
     userId: 'test-user',
     userHome: '/home/test-user',
     getAuthProvider: vi.fn().mockResolvedValue({
-      type: 'pat',
+      type: 'oauth-m2m',
       getEnvVars: vi.fn(),
-      getToken: vi.fn().mockResolvedValue('test-pat-token'),
+      getToken: vi.fn().mockResolvedValue('test-sp-token'),
     }),
     oboAccessToken: undefined,
   })),
@@ -58,7 +58,6 @@ describe('session route - invalid session ID handling', () => {
     originalEnv = { ...process.env };
 
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-    process.env.ENCRYPTION_KEY = 'a'.repeat(64);
     process.env.DATABRICKS_HOST = 'test.databricks.com';
     process.env.NODE_ENV = 'test';
 

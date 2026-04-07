@@ -14,7 +14,6 @@ describe('database plugin', () => {
 
     // Set required environment variables for config plugin
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test_db';
-    process.env.ENCRYPTION_KEY = 'a'.repeat(64);
     process.env.DATABRICKS_HOST = 'test.databricks.com';
 
     // Create a fresh Fastify instance for each test

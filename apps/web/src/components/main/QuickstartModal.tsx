@@ -149,14 +149,11 @@ function LakeflowContent({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { hasPat } = useUser();
   const [failedRuns, setFailedRuns] = useState<JobRun[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const fetchFailedRuns = useCallback(async () => {
-    if (!hasPat) return;
-
     setIsLoading(true);
     setHasError(false);
     try {
@@ -173,7 +170,7 @@ function LakeflowContent({
     } finally {
       setIsLoading(false);
     }
-  }, [hasPat]);
+  }, []);
 
   useEffect(() => {
     fetchFailedRuns();
@@ -192,15 +189,6 @@ function LakeflowContent({
     onFillPrompt(prompt);
     onClose();
   };
-
-  if (!hasPat) {
-    return (
-      <div className="flex flex-col items-center py-8">
-        <AlertCircle className="h-8 w-8 text-muted-foreground mb-4" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground text-center">{t('workspace.patRequired')}</p>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -334,7 +322,7 @@ function DatabricksAppsContent({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { user, hasPat } = useUser();
+  const { user } = useUser();
   const [templates, setTemplates] = useState<AppTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -383,7 +371,7 @@ function DatabricksAppsContent({
   };
 
   const handleClone = async () => {
-    if (!selectedTemplate || !onFillPrompt || !hasPat || !user?.email) return;
+    if (!selectedTemplate || !onFillPrompt || !user?.email) return;
 
     setIsCloning(true);
     setCloneError(null);
@@ -433,15 +421,6 @@ function DatabricksAppsContent({
       setIsCloning(false);
     }
   };
-
-  if (!hasPat) {
-    return (
-      <div className="flex flex-col items-center py-8">
-        <AlertCircle className="h-8 w-8 text-muted-foreground mb-4" aria-hidden="true" />
-        <p className="text-sm text-muted-foreground text-center">{t('workspace.patRequired')}</p>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (

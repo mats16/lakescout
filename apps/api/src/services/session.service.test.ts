@@ -25,7 +25,8 @@ vi.mock('../utils/directory.js', () => ({
 }));
 
 vi.mock('../lib/databricks-auth.js', () => ({
-  getAuthProvider: vi.fn().mockResolvedValue({
+  getAuthProvider: vi.fn().mockReturnValue({
+    type: 'oauth-m2m',
     getToken: vi.fn().mockResolvedValue('test-token'),
   }),
 }));

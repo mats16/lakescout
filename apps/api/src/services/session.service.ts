@@ -299,10 +299,12 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           ...(workspacePath ? { DATABRICKS_WORKSPACE_PATH: workspacePath } : {}),
           ANTHROPIC_BASE_URL: fastify.config.ANTHROPIC_BASE_URL,
           ANTHROPIC_AUTH_TOKEN: await authProvider.getToken(),
-          ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-disable-beta-headers: true',
+          ANTHROPIC_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
           ANTHROPIC_DEFAULT_OPUS_MODEL: fastify.config.ANTHROPIC_DEFAULT_OPUS_MODEL,
           ANTHROPIC_DEFAULT_SONNET_MODEL: fastify.config.ANTHROPIC_DEFAULT_SONNET_MODEL,
           ANTHROPIC_DEFAULT_HAIKU_MODEL: fastify.config.ANTHROPIC_DEFAULT_HAIKU_MODEL,
+          ANTHROPIC_CUSTOM_HEADERS: 'x-databricks-use-coding-agent-mode: true',
+          CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: "1",
           ...authProvider.getEnvVars(),
         },
         sandbox: {
@@ -705,8 +707,8 @@ export async function archiveSession(
   // user_home を取得（ベースディレクトリとして使用）
   const { userHome } = ctx;
 
-  // AuthProvider をトランザクション外で取得（PAT 優先）
-  const authProvider = await getAuthProvider(fastify, ctx.userId);
+  // AuthProvider をトランザクション外で取得
+  const authProvider = getAuthProvider(fastify);
 
   return fastify.withUserContext(userId, async tx => {
     // 1. セッション情報を取得（cwd を取得するため）

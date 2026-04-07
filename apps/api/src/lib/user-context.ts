@@ -1,12 +1,12 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import path from 'node:path';
-import { getAuthProvider, type AuthProvider, type PrincipalType } from './databricks-auth.js';
+import { getAuthProvider, type AuthProvider } from './databricks-auth.js';
 
 /**
  * ユーザーコンテキスト
  *
  * リクエストごとのユーザー情報とトークンを管理する。
- * 認証は AuthProvider に委譲し、遅延評価でキャッシュされる。
+ * 認証は AuthProvider に委譲し、キャッシュされる。
  */
 export class UserContext {
   /** ユーザー ID */
@@ -16,7 +16,7 @@ export class UserContext {
   /** ユーザーのホームディレクトリ */
   readonly userHome: string;
 
-  /** AuthProvider キャッシュ（リクエストスコープ）: null = 未取得 */
+  /** AuthProvider キャッシュ（リクエストスコープ） */
   private _authProvider: AuthProvider | null = null;
 
   constructor(
@@ -33,22 +33,12 @@ export class UserContext {
   }
 
   /**
-   * AuthProvider を取得（遅延評価、リクエストスコープでキャッシュ）
-   * PAT が登録されていれば PAT、なければ SP を使用
-   *
-   * @param principalType - 使用するプリンシパルの種類（省略時は 'auto' でキャッシュを使用）
-   *   - 'auto': PAT があれば PAT、なければ SP（キャッシュを使用）
-   *   - 'pat': PAT のみ使用（キャッシュを使用しない）
-   *   - 'sp': Service Principal のみ使用（キャッシュを使用しない）
+   * AuthProvider を取得（リクエストスコープでキャッシュ）
+   * Service Principal を使用
    */
-  async getAuthProvider(principalType?: PrincipalType): Promise<AuthProvider> {
-    // principalType が指定された場合は都度取得（キャッシュを使わない）
-    if (principalType !== undefined) {
-      return getAuthProvider(this.fastify, this.userId, principalType);
-    }
-    // デフォルト（auto）の場合はキャッシュを使用
+  getAuthProvider(): AuthProvider {
     if (this._authProvider === null) {
-      this._authProvider = await getAuthProvider(this.fastify, this.userId);
+      this._authProvider = getAuthProvider(this.fastify);
     }
     return this._authProvider;
   }

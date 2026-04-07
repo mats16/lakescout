@@ -41,7 +41,6 @@ describe('title route', () => {
 
     // Set required environment variables
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
-    process.env.ENCRYPTION_KEY = 'a'.repeat(64);
     process.env.DATABRICKS_HOST = 'test.databricks.com';
     process.env.NODE_ENV = 'test';
 

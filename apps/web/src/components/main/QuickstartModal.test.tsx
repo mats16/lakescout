@@ -29,7 +29,6 @@ vi.mock('@/hooks/useUser', () => ({
       userName: 'Test User',
       userId: 'user-123',
     },
-    hasPat: true,
     isLoading: false,
   }),
 }));

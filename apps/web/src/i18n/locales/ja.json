@@ -55,7 +55,6 @@
     "processingFailed": "画像の処理に失敗しました"
   },
   "user": {
-    "settings": "設定",
     "language": "言語",
     "theme": "テーマ",
     "claudeCode": "Claude Code",
@@ -72,26 +71,6 @@
     "cancel": "キャンセル",
     "save": "保存"
   },
-  "settings": {
-    "title": "設定",
-    "description": "アカウント設定と連携を管理します。",
-    "token": {
-      "label": "Databricks Personal Access Token",
-      "placeholder": "dapi...",
-      "help": "Databricks PAT は暗号化されて安全に保存されます。",
-      "registered": "登録済み",
-      "replace": "トークンを変更",
-      "save": "トークンを保存",
-      "fetchError": "トークン情報の取得に失敗しました",
-      "emptyError": "トークンを入力してください",
-      "formatError": "形式が正しくありません。Databricks PAT は 'dapi' で始まります",
-      "saveSuccess": "トークンを保存しました",
-      "saveError": "トークンの保存に失敗しました",
-      "deleteSuccess": "トークンを削除しました",
-      "deleteError": "トークンの削除に失敗しました",
-      "createLink": "Databricks で新しいトークンを作成"
-    }
-  },
   "time": {
     "justNow": "たった今",
     "minutesAgo": "{{count}}分前",
@@ -105,7 +84,6 @@
   },
   "workspace": {
     "select": "Workspace フォルダを選択",
-    "patRequired": "Workspace を選択するには PAT の設定が必要です",
     "recent": "最近",
     "selectOther": "別のフォルダを選択",
     "clear": "選択解除",

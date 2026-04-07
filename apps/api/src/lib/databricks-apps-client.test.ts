@@ -294,18 +294,19 @@ describe('DatabricksAppsClient', () => {
   });
 
   describe('AuthProvider types', () => {
-    it('should work with PAT auth provider', async () => {
-      const patAuthProvider: AuthProvider = {
-        type: 'pat',
-        getToken: vi.fn().mockResolvedValue('pat-token'),
+    it('should work with SP auth provider', async () => {
+      const spAuthProvider: AuthProvider = {
+        type: 'oauth-m2m',
+        getToken: vi.fn().mockResolvedValue('sp-token'),
         getEnvVars: vi.fn().mockReturnValue({
-          DATABRICKS_AUTH_TYPE: 'pat',
+          DATABRICKS_AUTH_TYPE: 'oauth-m2m',
           DATABRICKS_HOST: 'https://example.databricks.com',
-          DATABRICKS_TOKEN: 'pat-token',
+          DATABRICKS_CLIENT_ID: 'client-id',
+          DATABRICKS_CLIENT_SECRET: 'client-secret',
         }),
       };
 
-      const patClient = new DatabricksAppsClient(patAuthProvider);
+      const spClient = new DatabricksAppsClient(spAuthProvider);
 
       const mockApp = { name: 'test-app' };
       global.fetch = vi.fn().mockResolvedValue({
@@ -313,9 +314,9 @@ describe('DatabricksAppsClient', () => {
         json: () => Promise.resolve(mockApp),
       });
 
-      const app = await patClient.get('test-app');
+      const app = await spClient.get('test-app');
       expect(app).toEqual(mockApp);
-      expect(patAuthProvider.getToken).toHaveBeenCalled();
+      expect(spAuthProvider.getToken).toHaveBeenCalled();
     });
   });
 });

@@ -831,9 +831,6 @@ export async function backupAgentsToWorkspace(ctx: UserContext): Promise<AgentBa
 
   // 認証情報を取得
   const authProvider = await ctx.getAuthProvider();
-  if (authProvider.type !== 'pat') {
-    throw new Error('PAT is required for backup operation');
-  }
 
   // ローカルエージェントディレクトリが存在するか確認
   try {
@@ -885,9 +882,6 @@ export async function restoreAgentsFromWorkspace(ctx: UserContext): Promise<Agen
 
   // 認証情報を取得
   const authProvider = await ctx.getAuthProvider();
-  if (authProvider.type !== 'pat') {
-    throw new Error('PAT is required for restore operation');
-  }
 
   // 1. ローカルの既存ディレクトリを削除
   // セキュリティ: ユーザーホーム配下であることを検証
