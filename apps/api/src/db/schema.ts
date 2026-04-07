@@ -1,13 +1,5 @@
 // apps/api/src/db/schema.ts
-import {
-  pgTable,
-  uuid,
-  timestamp,
-  text,
-  index,
-  pgPolicy,
-  jsonb,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, timestamp, text, index, pgPolicy, jsonb } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // =====================================================

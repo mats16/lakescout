@@ -47,9 +47,7 @@ export function UserProvider({ children }: UserProviderProps) {
   }, [fetchUser]);
 
   return (
-    <UserContext.Provider
-      value={{ user, databricksHost, isLoading, error, refetch: fetchUser }}
-    >
+    <UserContext.Provider value={{ user, databricksHost, isLoading, error, refetch: fetchUser }}>
       {children}
     </UserContext.Provider>
   );

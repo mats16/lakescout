@@ -326,6 +326,5 @@ describe('Database Integration Tests', () => {
         expect(updated.claudeConfigBackup).toBe('disabled');
       });
     });
-
   });
 });

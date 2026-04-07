@@ -148,7 +148,6 @@ describe('config plugin', () => {
 
       await expect(app.register(configPlugin)).rejects.toThrow();
     });
-
   });
 
   describe('directory configuration', () => {
