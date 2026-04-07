@@ -1,5 +1,5 @@
 command: ["npm", "run", "start", "--workspace=apps/api"]
 
-env:
-  - name: DATABASE_URL
-    value: postgresql://postgres:postgres@localhost:5432/postgres
+#env:
+#  - name: DATABASE_URL
+#    value: postgresql://postgres:postgres@localhost:5432/postgres
