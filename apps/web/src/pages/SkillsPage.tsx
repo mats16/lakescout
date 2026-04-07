@@ -75,18 +75,6 @@ const PRESET_REPOS: PresetRepo[] = [
     defaultPath: 'skills',
     defaultBranch: 'main',
   },
-  {
-    label: 'Microsoft',
-    url: 'https://github.com/microsoft/skills',
-    defaultPath: 'skills',
-    defaultBranch: 'main',
-  },
-  {
-    label: 'LakeScout',
-    url: 'https://github.com/mats16/lakescout',
-    defaultPath: 'skills',
-    defaultBranch: 'main',
-  },
 ];
 
 /** GitHub APIのディレクトリエントリ型 */
