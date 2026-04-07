@@ -23,6 +23,7 @@ resources:
         - catalog.catalogs:read
         - catalog.schemas:read
         - catalog.tables:read
+        - workspace.workspace
       permissions:
         - level: CAN_USE
           group_name: users
