@@ -1,7 +1,5 @@
 command: ["npm", "run", "start", "--workspace=apps/api"]
 
 env:
-  - name: USER_BASE_DIR
-    value: /home/app/users
   - name: DATABASE_URL
-    valueFrom: database-url-secret
+    value: postgresql://postgres:postgres@localhost:5432/postgres
