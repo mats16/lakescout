@@ -26,7 +26,6 @@ import type {
 import { ClaudeSettings } from '../models/claude-settings.model.js';
 import { buildSystemPromptConfig } from '../utils/system-prompt.helper.js';
 import { sessions } from '../db/schema.js';
-import { createDbAppsMcpServer } from '../lib/mcp-databricks-apps.js';
 import { insertSessionEventInTx } from '../db/helpers.js';
 import { ensureDirectory, removeDirectory } from '../utils/directory.js';
 import { validatePathWithinBase } from '../utils/path-validation.js';
@@ -265,8 +264,6 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
         },
       };
     }
-    mcpServers.apps = createDbAppsMcpServer({ authProvider, sessionId });
-
     const workspacePath = sessionContext.sources.find(
       (s): s is DatabricksWorkspaceSource => s.type === 'databricks_workspace'
     )?.path;
@@ -307,13 +304,13 @@ async function startQueryPipeline(params: StartQueryPipelineParams): Promise<voi
           CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: "1",
           ...authProvider.getEnvVars(),
         },
-        sandbox: {
-          enabled: true,
-          autoAllowBashIfSandboxed: true,
-          network: {
-            allowedDomains: ['*'],
-          },
-        },
+        //sandbox: {
+        //  enabled: true,
+        //  autoAllowBashIfSandboxed: true,
+        //  network: {
+        //    allowedDomains: ['*'],
+        //  },
+        //},
       },
     });
 

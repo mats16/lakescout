@@ -31,10 +31,6 @@ vi.mock('../lib/databricks-auth.js', () => ({
   }),
 }));
 
-vi.mock('../lib/mcp-databricks-apps.js', () => ({
-  createDbAppsMcpServer: vi.fn().mockReturnValue({}),
-}));
-
 vi.mock('../lib/databricks-apps-client.js', () => ({
   DatabricksAppsClient: vi.fn().mockImplementation(() => ({
     delete: vi.fn().mockResolvedValue(undefined),
