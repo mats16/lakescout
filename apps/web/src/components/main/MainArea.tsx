@@ -7,6 +7,7 @@ import type {
   UserMessageContentBlock,
   DatabricksWorkspaceSource,
   McpConfig,
+  WorkspaceSelection,
 } from '@repo/types';
 import { MainHeader } from './MainHeader';
 import { MessageArea } from './MessageArea';
@@ -94,6 +95,7 @@ export function MainArea({
     content: UserMessageContentBlock[],
     modelId: string,
     enableDatabricksSqlWrite: boolean,
+    workspaceSelection: WorkspaceSelection | null,
     mcpConfig?: McpConfig,
     allowedTools?: string[],
     disallowedTools?: string[]
@@ -127,7 +129,15 @@ export function MainArea({
         ],
         session_context: {
           model: modelId as 'opus' | 'sonnet' | 'haiku',
-          sources: [],
+          sources: workspaceSelection
+            ? [
+                {
+                  type: 'databricks_workspace',
+                  path: workspaceSelection.path,
+                  id: workspaceSelection.object_id,
+                },
+              ]
+            : [],
           outcomes: [
             {
               type: 'databricks_workspace',
