@@ -43,16 +43,18 @@ import {
 import { useMcpSelection } from '@/hooks/useMcpSelection';
 import type { UserMessageContentBlock, McpConfig, WorkspaceSelection } from '@repo/types';
 
+export interface NewSessionParams {
+  content: UserMessageContentBlock[];
+  modelId: string;
+  enableDatabricksSqlWrite: boolean;
+  workspaceSelection: WorkspaceSelection | null;
+  mcpConfig?: McpConfig;
+  allowedTools?: string[];
+  disallowedTools?: string[];
+}
+
 interface WelcomeScreenProps {
-  onNewSession?: (
-    content: UserMessageContentBlock[],
-    modelId: string,
-    enableDatabricksSqlWrite: boolean,
-    workspaceSelection: WorkspaceSelection | null,
-    mcpConfig?: McpConfig,
-    allowedTools?: string[],
-    disallowedTools?: string[]
-  ) => Promise<void> | void;
+  onNewSession?: (params: NewSessionParams) => Promise<void> | void;
   sessionError?: string | null;
 }
 
@@ -113,15 +115,15 @@ export function WelcomeScreen({ onNewSession, sessionError }: WelcomeScreenProps
       const mcpConfig = buildMcpConfig();
       const allowedTools = buildAllowedTools();
       const disallowedTools = buildDisallowedTools();
-      await onNewSession?.(
-        messageContent,
-        selectedModel.id,
+      await onNewSession?.({
+        content: messageContent,
+        modelId: selectedModel.id,
         enableDatabricksSqlWrite,
-        selectedWorkspace,
+        workspaceSelection: selectedWorkspace,
         mcpConfig,
         allowedTools,
-        disallowedTools
-      );
+        disallowedTools,
+      });
       setContent('');
       clearImages();
     } finally {

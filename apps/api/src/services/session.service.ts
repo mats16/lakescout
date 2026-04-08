@@ -365,48 +365,19 @@ export async function createSession(
 
   await ensureDirectory(cwd);
 
-  // 4. Workspace ソースからファイルをインポート（OBO トークンで直接実行）
-  const workspaceSources = session_context.sources.filter(
-    (s): s is DatabricksWorkspaceSource => s.type === 'databricks_workspace'
-  );
-
-  if (workspaceSources.length > 0) {
-    const oboToken = ctx.oboAccessToken;
-    if (oboToken) {
-      for (const source of workspaceSources) {
-        try {
-          await execFileAsync(
-            'databricks',
-            ['workspace', 'export-dir', source.path, '.', '--overwrite'],
-            {
-              cwd,
-              env: {
-                PATH: fastify.config.PATH,
-                HOME: ctx.userHome,
-                DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
-                DATABRICKS_TOKEN: oboToken,
-              },
-              timeout: 60_000,
-            }
-          );
-          fastify.log.info(
-            { sessionId: sessionId.toString(), sourcePath: source.path },
-            'Exported workspace directory to session cwd'
-          );
-        } catch (error) {
-          fastify.log.error(
-            { sessionId: sessionId.toString(), sourcePath: source.path, error },
-            'Failed to export workspace directory'
-          );
-        }
+  // 4. Workspace ソースのバリデーション
+  const workspaceSources = session_context.sources
+    .filter((s): s is DatabricksWorkspaceSource => s.type === 'databricks_workspace')
+    .filter(source => {
+      if (!source.path || !source.path.startsWith('/') || source.path.includes('..')) {
+        fastify.log.warn(
+          { sessionId: sessionId.toString(), path: source.path },
+          'Invalid workspace source path, skipping'
+        );
+        return false;
       }
-    } else {
-      fastify.log.warn(
-        { sessionId: sessionId.toString() },
-        'OBO token not available, skipping workspace export'
-      );
-    }
-  }
+      return true;
+    });
 
   // 5. outcomes のパス内変数を解決（{session_id} → 実際のセッションID）
   const resolvedOutcomes = session_context.outcomes.map(outcome => ({
@@ -425,11 +396,10 @@ export async function createSession(
     mcp_config: session_context.mcp_config,
   };
 
-  // 6. タイムスタンプを設定（レスポンス用）
+  // 7. タイムスタンプを設定（レスポンス用）
   const now = new Date();
 
-  // 7. sessions を INSERT (status='init')
-  // user message は init イベント受信時に saveAndBroadcastEvent で処理
+  // 8. sessions を INSERT (status='init')
   await fastify.withUserContext(userId, async tx => {
     await tx.insert(sessions).values({
       id: sessionId.toUUID(),
@@ -441,7 +411,7 @@ export async function createSession(
     });
   });
 
-  // 8. SDK query パイプラインを開始
+  // 9. prompt の構築
   const prompt: string | SDKUserMessage =
     Array.isArray(userContent) && userEvent
       ? {
@@ -455,17 +425,65 @@ export async function createSession(
         ? userContent
         : '';
 
-  await startQueryPipeline({
-    fastify,
-    ctx,
-    sessionId,
-    prompt,
-    sessionContext,
-    sdkSessionId: undefined,
-    initialUserEvent: userEvent?.data,
+  // 10. バックグラウンドで workspace export → query pipeline を実行
+  (async () => {
+    // Workspace ソースからファイルをインポート（OBO トークンで直接実行）
+    if (workspaceSources.length > 0) {
+      const oboToken = ctx.oboAccessToken;
+      if (oboToken) {
+        for (const source of workspaceSources) {
+          try {
+            await execFileAsync(
+              'databricks',
+              ['workspace', 'export-dir', source.path, '.', '--overwrite'],
+              {
+                cwd,
+                env: {
+                  PATH: fastify.config.PATH,
+                  HOME: ctx.userHome,
+                  DATABRICKS_HOST: `https://${fastify.config.DATABRICKS_HOST}`,
+                  DATABRICKS_TOKEN: oboToken,
+                },
+                timeout: 60_000,
+              }
+            );
+            fastify.log.info(
+              { sessionId: sessionId.toString(), sourcePath: source.path },
+              'Exported workspace directory to session cwd'
+            );
+          } catch (error) {
+            fastify.log.error(
+              { sessionId: sessionId.toString(), sourcePath: source.path, error },
+              'Failed to export workspace directory'
+            );
+          }
+        }
+      } else {
+        fastify.log.warn(
+          { sessionId: sessionId.toString() },
+          'OBO token not available, skipping workspace export'
+        );
+      }
+    }
+
+    // SDK query パイプラインを開始（export 完了後）
+    await startQueryPipeline({
+      fastify,
+      ctx,
+      sessionId,
+      prompt,
+      sessionContext,
+      sdkSessionId: undefined,
+      initialUserEvent: userEvent?.data,
+    });
+  })().catch(error => {
+    fastify.log.error(
+      { sessionId: sessionId.toString(), error },
+      'Background session setup failed'
+    );
   });
 
-  // 9. 即座にレスポンス返却
+  // 11. 即座にレスポンス返却
   return {
     id: sessionId.toString(),
     session_status: 'init',

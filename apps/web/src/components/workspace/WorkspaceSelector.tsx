@@ -40,13 +40,6 @@ export function WorkspaceSelector({ value, onChange, disabled = false }: Workspa
     [onChange, addRecentWorkspace]
   );
 
-  const handleModalSelect = useCallback(
-    (selection: WorkspaceSelection) => {
-      handleSelect(selection);
-    },
-    [handleSelect]
-  );
-
   const handleClear = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -146,7 +139,7 @@ export function WorkspaceSelector({ value, onChange, disabled = false }: Workspa
       <WorkspaceBrowserModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSelect={handleModalSelect}
+        onSelect={handleSelect}
         initialPath={userHomePath}
         selectableTypes={['DIRECTORY', 'REPO']}
       />
