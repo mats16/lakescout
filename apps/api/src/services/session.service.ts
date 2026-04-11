@@ -61,6 +61,14 @@ const SESSION_SELECT_COLUMNS = {
 } as const;
 
 /**
+ * SDKMessage から UUID を安全に抽出する。有効な文字列でない場合はランダム UUID を生成する。
+ */
+function extractEventUuid(message: SDKMessage): string {
+  const raw = 'uuid' in message ? message.uuid : undefined;
+  return typeof raw === 'string' && raw ? raw : crypto.randomUUID();
+}
+
+/**
  * イベントをバッチバッファに追加し、WebSocket にブロードキャストする
  *
  * 1. バッチバッファに追加（非同期で DB 永続化）
@@ -74,8 +82,7 @@ function saveAndBroadcastEvent(
   sessionId: SessionId,
   message: SDKMessage
 ): void {
-  const rawUuid = 'uuid' in message ? message.uuid : undefined;
-  const eventUuid = typeof rawUuid === 'string' && rawUuid ? rawUuid : crypto.randomUUID();
+  const eventUuid = extractEventUuid(message);
   const eventSubtype = 'subtype' in message ? (message.subtype as string | undefined) : undefined;
 
   // 1. バッチバッファに追加（バッチサイズ到達 or インターバル経過で DB 永続化）
@@ -123,7 +130,6 @@ async function processAllEvents(
         const initMessage = message as SDKSystemMessage;
 
         // status='running' に更新 & sdkSessionId を設定
-        // 失敗してもイベント処理ループは継続する（ステータス更新はベストエフォート）
         try {
           await fastify.withUserContext(userId, async tx => {
             await tx
@@ -692,7 +698,7 @@ export async function sendMessageToSession(
   const sessionContext = sessionRow.context as SessionContextResponse;
 
   // 4. user message を DB に保存し、status を running に更新
-  const eventUuid = userMessage.uuid ?? crypto.randomUUID();
+  const eventUuid = extractEventUuid(userMessage);
   await fastify.withUserContext(userId, async tx => {
     // user message を session_events に INSERT
     await insertSessionEventInTx(tx, {

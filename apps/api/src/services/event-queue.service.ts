@@ -101,18 +101,14 @@ export class EventBatcher {
           // doFlush は内部で Promise.allSettled を使い、失敗した各ユーザーのリトライを
           // 個別にスケジュールする。ここでの catch はタイムアウト時のみ到達する。
           // doFlush はバックグラウンドで継続実行中のため、重複リトライを避けるためログのみ出力。
-          try {
-            this.fastify.log.error(
-              { err, eventCount: batch.length },
-              'Flush timed out; doFlush will handle retries internally'
-            );
-          } catch {
-            // ロガー自体のエラーでチェーンを壊さない
-          }
+          this.fastify.log.error(
+            { err, eventCount: batch.length },
+            'Flush timed out; doFlush will handle retries internally'
+          );
         }
       })
       .catch(() => {
-        // .then() ハンドラの予期しない例外でチェーンが永久停止するのを防ぐセーフティネット
+        // 予期しない例外（ロガーのシリアライズエラー等）でチェーンが永久停止するのを防ぐ
       });
 
     await this.flushChain;
