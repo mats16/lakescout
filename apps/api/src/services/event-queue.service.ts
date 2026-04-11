@@ -93,19 +93,27 @@ export class EventBatcher {
     this.buffer = [];
 
     // Promise チェーンに繋げて直列化 + タイムアウト保護
-    this.flushChain = this.flushChain.then(async () => {
-      try {
-        await withTimeout(this.doFlush(batch), FLUSH_TIMEOUT_MS, 'flush');
-      } catch (err) {
-        // doFlush は内部で Promise.allSettled を使い、失敗した各ユーザーのリトライを
-        // 個別にスケジュールする。ここでの catch はタイムアウト時のみ到達する。
-        // doFlush はバックグラウンドで継続実行中のため、重複リトライを避けるためログのみ出力。
-        this.fastify.log.error(
-          { err, eventCount: batch.length },
-          'Flush timed out; doFlush will handle retries internally'
-        );
-      }
-    });
+    this.flushChain = this.flushChain
+      .then(async () => {
+        try {
+          await withTimeout(this.doFlush(batch), FLUSH_TIMEOUT_MS, 'flush');
+        } catch (err) {
+          // doFlush は内部で Promise.allSettled を使い、失敗した各ユーザーのリトライを
+          // 個別にスケジュールする。ここでの catch はタイムアウト時のみ到達する。
+          // doFlush はバックグラウンドで継続実行中のため、重複リトライを避けるためログのみ出力。
+          try {
+            this.fastify.log.error(
+              { err, eventCount: batch.length },
+              'Flush timed out; doFlush will handle retries internally'
+            );
+          } catch {
+            // ロガー自体のエラーでチェーンを壊さない
+          }
+        }
+      })
+      .catch(() => {
+        // .then() ハンドラの予期しない例外でチェーンが永久停止するのを防ぐセーフティネット
+      });
 
     await this.flushChain;
   }
@@ -173,7 +181,12 @@ export class EventBatcher {
         const events = eventsByUser.get(userId)!;
         const error = (results[i] as PromiseRejectedResult).reason;
         this.fastify.log.warn(
-          { err: error, userId, eventCount: events.length },
+          {
+            err: error,
+            userId,
+            eventCount: events.length,
+            sessionIds: [...new Set(events.map(e => e.sessionId))],
+          },
           'Event flush failed for user, scheduling retry'
         );
         this.scheduleRetry(userId, events, 1);
@@ -293,7 +306,21 @@ export class EventBatcher {
       } catch (err) {
         failed++;
         this.fastify.log.error(
-          { err, userId, eventUuid: event.eventUuid, sessionId: event.sessionId },
+          {
+            err,
+            userId,
+            eventUuid: event.eventUuid,
+            eventUuidType: typeof event.eventUuid,
+            sessionId: event.sessionId,
+            eventType: event.type,
+            messageSize: (() => {
+              try {
+                return JSON.stringify(event.message).length;
+              } catch {
+                return -1;
+              }
+            })(),
+          },
           'Event permanently dropped'
         );
       }

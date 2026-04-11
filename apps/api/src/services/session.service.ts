@@ -74,7 +74,8 @@ function saveAndBroadcastEvent(
   sessionId: SessionId,
   message: SDKMessage
 ): void {
-  const eventUuid = 'uuid' in message ? (message.uuid as string) : crypto.randomUUID();
+  const rawUuid = 'uuid' in message ? message.uuid : undefined;
+  const eventUuid = typeof rawUuid === 'string' && rawUuid ? rawUuid : crypto.randomUUID();
   const eventSubtype = 'subtype' in message ? (message.subtype as string | undefined) : undefined;
 
   // 1. バッチバッファに追加（バッチサイズ到達 or インターバル経過で DB 永続化）
@@ -122,15 +123,23 @@ async function processAllEvents(
         const initMessage = message as SDKSystemMessage;
 
         // status='running' に更新 & sdkSessionId を設定
-        await fastify.withUserContext(userId, async tx => {
-          await tx
-            .update(sessions)
-            .set({
-              status: 'running',
-              sdkSessionId: initMessage.session_id || null,
-            })
-            .where(eq(sessions.id, sessionId.toUUID()));
-        });
+        // 失敗してもイベント処理ループは継続する（ステータス更新はベストエフォート）
+        try {
+          await fastify.withUserContext(userId, async tx => {
+            await tx
+              .update(sessions)
+              .set({
+                status: 'running',
+                sdkSessionId: initMessage.session_id || null,
+              })
+              .where(eq(sessions.id, sessionId.toUUID()));
+          });
+        } catch (updateError) {
+          fastify.log.error(
+            { sessionId: sessionId.toString(), updateError },
+            'Failed to update session status to running (continuing event processing)'
+          );
+        }
 
         // 初回 user message を SDKUserMessageReplay として broadcast & DB 保存
         if (initialUserEvent) {
